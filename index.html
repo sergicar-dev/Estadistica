@@ -4,6 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>StatLab UTP — Estadística descriptiva</title>
+    <!--
+      STATLAB · DOCUMENTACIÓN DEL PROYECTO
+      Aplicación educativa de una sola página (HTML + CSS + JavaScript).
+
+      Módulos:
+        1) Portada de bienvenida y navegación.
+        2) Entrada manual, naturaleza de variable seleccionable e importación CSV/Excel.
+        3) Medidas descriptivas para variables cuantitativas.
+        4) Tabla de frecuencias para variables cuantitativas y cualitativas.
+        5) Gráficas (barras/histograma, circular y caja-bigotes).
+        6) Interpretación automática de las medidas calculadas.
+        7) Exportación de la tabla de frecuencias en CSV.
+        8) Pestaña Datos organizados: orden ascendente/descendente, búsqueda,
+           paginación, resumen por valor, copia y exportación completa en CSV.
+        9) Controles del analizador con estética común navy + degradado menta/cielo.
+
+      Dependencias CDN: Tailwind CSS (utilidades visuales), Chart.js (gráficas),
+      chartjs-chart-boxplot (diagrama de caja), PapaParse (lectura CSV), SheetJS
+      (importación Excel .xlsx/.xls) y Font Awesome.
+      La aplicación no envía los datos a un servidor: el análisis ocurre en el navegador.
+      La conexión a Internet es necesaria para descargar estas bibliotecas externas.
+
+      Convenciones estadísticas:
+        - Varianza y desviación estándar poblacionales (divisor N, no N - 1).
+        - Cuartiles calculados mediante interpolación lineal sobre los datos ordenados.
+        - Asimetría y curtosis calculadas a partir de momentos centrales poblacionales.
+        - Curtosis mostrada como momento estandarizado (normal = 3); exceso = curtosis - 3.
+        - Datos numéricos con más de 10 valores distintos se agrupan usando Sturges.
+
+      Publicación: subir este archivo con el nombre index.html al repositorio GitHub
+      y activar Settings > Pages > Deploy from a branch > main / (root).
+      Para mantener el código, busca los comentarios por módulo más abajo.
+    -->
     <meta name="description" content="Explora, organiza y comprende tus datos con herramientas de estadística descriptiva.">
     <meta name="theme-color" content="#11152d">
     
@@ -11,18 +44,23 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Chart.js para gráficas -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"></script>
     <!-- Plugin de Chart.js para Boxplot -->
-    <script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot@4.2.0/build/index.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot@4.4.5/build/index.umd.min.js"></script>
     
     <!-- PapaParse para CSV -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.0/papaparse.min.js"></script>
+    <!-- SheetJS para importar libros Excel .xlsx y .xls (se procesa localmente) -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 
     <!-- FontAwesome para Íconos -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <!-- Configuración personalizada de Tailwind -->
     <script>
+        // Reintenta durante un tiempo limitado: un CDN caído no debe dejar un
+        // temporizador infinito ejecutándose en la página.
+        let tailwindConfigAttempts = 0;
         function configureTailwind() {
             if (typeof tailwind !== 'undefined') {
                 tailwind.config = {
@@ -41,7 +79,8 @@
                         }
                     }
                 }
-            } else {
+            } else if (tailwindConfigAttempts < 60) {
+                tailwindConfigAttempts += 1;
                 setTimeout(configureTailwind, 50);
             }
         }
@@ -52,9 +91,12 @@
         :root { --ink:#171a35; --muted:#78809a; --navy:#11152d; --blue:#4f46e5; --mint:#62e6c6; --paper:#f5f7fc; --line:#e8ebf5; }
         * { box-sizing:border-box; }
         body { font-family:'DM Sans',sans-serif; background:var(--paper); color:var(--ink); }
+        /* En escritorio el documento permanece fijo y desplaza el panel central. */
+        body.app-mode { height:100vh; min-height:0; overflow:hidden; }
         h1,h2,h3,h4,.font-bold,.font-semibold { font-family:'Manrope','DM Sans',sans-serif; }
         button, textarea, input { font:inherit; }
         button { cursor:pointer; }
+        button:focus-visible, input:focus-visible, textarea:focus-visible, a:focus-visible { outline:3px solid #62e6c6; outline-offset:3px; }
         .hidden { display:none !important; }
         .fade-in { animation:fadeIn .36s cubic-bezier(.2,.7,.2,1); }
         @keyframes fadeIn { from {opacity:0;transform:translateY(9px)} to {opacity:1;transform:translateY(0)} }
@@ -109,6 +151,9 @@
         .floating-note strong { display:block;color:#f1f3ff;font-size:12px;margin-top:3px; }
         .welcome-footer { border-top:1px solid rgba(255,255,255,.1);padding-top:18px;display:flex;justify-content:space-between;gap:12px;color:#858eaf;font-size:11px; }
         .app-shell { display:flex;width:100%;height:100vh;min-height:0;background:var(--paper); }
+        body.app-mode { height:100vh;min-height:0;overflow:hidden; }
+        .app-main { min-height:0;min-width:0; }
+        #main-scroll { flex:1 1 0%;height:auto;min-height:0;min-width:0;overflow-y:auto !important;overflow-x:hidden;overscroll-behavior-y:contain;-webkit-overflow-scrolling:touch; }
         .app-sidebar { width:258px;flex:0 0 258px;background:var(--navy);color:white;display:flex;flex-direction:column;padding:23px 15px 17px;position:relative;z-index:20; }
         .sidebar-brand { display:flex;align-items:center;gap:11px;padding:0 10px 26px;border-bottom:1px solid rgba(255,255,255,.09); }
         .sidebar-brand .brand-symbol { width:39px;height:39px;border-radius:13px;flex-shrink:0; }
@@ -132,9 +177,80 @@
         #section-title { color:#1b1f3d;font-size:clamp(18px,2vw,24px);font-weight:800;letter-spacing:-.045em;line-height:1.25; }
         #data-badge { border:1px solid #d2f5e7;color:#167a5a;background:#edfcf6;box-shadow:none;padding:10px 14px;font-size:12px;white-space:nowrap; }
         .header-action { display:inline-flex;align-items:center;gap:8px;background:white;border:1px solid #e0e5f1;color:#5e6684;border-radius:12px;padding:10px 13px;font-size:12px;font-weight:700;transition:.2s; }
-        .header-action:hover { border-color:#b2bad2;background:#f8f9ff; }
-        #main-scroll { padding:clamp(18px,3vw,38px); }
+        .header-action:hover { border-color:#a5eadb;background:#f3fffb;color:#20264c;box-shadow:0 8px 20px rgba(98,230,198,.13);transform:translateY(-1px); }
+        /* Sistema visual común para acciones del analizador: navy + degradado menta/cielo. */
+        .btn-primary, .btn-secondary, .btn-utility, .view-toggle, .page-button {
+            display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:43px;padding:11px 15px;
+            border:1px solid transparent;border-radius:13px;font-size:12px;font-weight:800;line-height:1.15;
+            text-decoration:none;white-space:nowrap;transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease,background .18s ease,color .18s ease;
+        }
+        .btn-primary { color:#11152d;background:linear-gradient(105deg,#80f0d5,#8bd8ff);box-shadow:0 8px 20px rgba(76,205,186,.16); }
+        .btn-primary:hover { transform:translateY(-2px);filter:saturate(1.08);box-shadow:0 13px 27px rgba(76,205,186,.25); }
+        .btn-secondary { color:#edf1ff;background:linear-gradient(145deg,#252b52,#151a38);border-color:#343d68;box-shadow:0 7px 17px rgba(17,21,45,.1); }
+        .btn-secondary:hover { transform:translateY(-2px);color:#7cebd0;border-color:rgba(124,235,208,.65);box-shadow:0 11px 22px rgba(17,21,45,.15); }
+        .btn-utility { color:#485171;background:linear-gradient(180deg,#fff,#f7f9ff);border-color:#e1e7f4;box-shadow:0 4px 12px rgba(30,38,84,.045); }
+        .btn-utility:hover { transform:translateY(-1px);color:#20264c;border-color:#a6e9dc;box-shadow:0 8px 20px rgba(98,230,198,.13); }
+        .btn-compact { min-height:38px;padding:9px 12px;font-size:11px;border-radius:11px; }
+        .view-toggle { min-height:39px;padding:9px 12px;background:#f5f7fc;color:#707894;border-color:#e4e9f5; }
+        .view-toggle:hover { color:#242b4d;border-color:#a4e8da; }
+        .view-toggle.is-selected { color:#14213a;background:linear-gradient(105deg,#d9fff4,#dceeff);border-color:#a6e9dc;box-shadow:inset 0 0 0 1px rgba(124,235,208,.25); }
+        .page-button { min-height:36px;padding:8px 11px;color:#edf1ff;background:#20264c;border-color:#343d68;border-radius:11px; }
+        .page-button:hover:not(:disabled) { color:#7cebd0;border-color:#7cebd0;transform:translateY(-1px); }
+        .page-button:disabled { cursor:not-allowed;opacity:.38;box-shadow:none;transform:none; }
+        .btn-primary:focus-visible,.btn-secondary:focus-visible,.btn-utility:focus-visible,.view-toggle:focus-visible,.page-button:focus-visible { outline:3px solid #62e6c6;outline-offset:3px; }
+        .nav-button { position:relative;overflow:hidden; }
+        .nav-button:not(.nav-locked):hover { transform:translateX(2px); }
+        .nav-button.is-active { box-shadow:inset 3px 0 #7cebd0,0 8px 22px rgba(4,8,27,.1); }
+        .nav-button.nav-locked::after { content:"";width:5px;height:5px;border-radius:50%;background:#667191;margin-left:auto; }
+        .upload-zone { transition:background .2s,border-color .2s,transform .2s,box-shadow .2s; }
+        .upload-zone:hover { background:#eafff8 !important;border-color:#75dfc7 !important;box-shadow:0 10px 24px rgba(67,190,168,.1);transform:translateY(-1px); }
+        .organized-toolbar { display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:19px 0 15px; }
+        .organized-search-wrap { position:relative;flex:1 1 240px;max-width:430px; }
+        .organized-search-wrap i { position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#969eb8;pointer-events:none; }
+        #organized-search { width:100%;min-height:43px;border:1px solid #e1e7f4;border-radius:13px;background:#fff;padding:10px 13px 10px 39px;color:#20264c;font-size:12px; }
+        #organized-search:focus { outline:none;border-color:#80dcca;box-shadow:0 0 0 4px rgba(98,230,198,.14); }
+        .organized-kpi { border:1px solid #e8ecf6;border-radius:15px;padding:13px 16px;background:linear-gradient(145deg,#fff,#f7f9ff);min-width:120px; }
+        .organized-kpi small { display:block;color:#8a92ad;font-size:10px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;margin-bottom:5px; }
+        .organized-kpi strong { color:#20264c;font-family:'Manrope',sans-serif;font-size:21px;letter-spacing:-.04em; }
+        .organized-table-wrap { max-height:58vh;overflow:auto;border:1px solid #e5eaf4;border-radius:16px;background:#fff; }
+        #organized-table { width:100%;border-collapse:separate;border-spacing:0;font-size:12px; }
+        #organized-table thead { position:sticky;top:0;z-index:2; }
+        #organized-table th { padding:13px 16px;text-align:left;background:#20264c;color:#dce5ff;font-size:10px;letter-spacing:.1em;text-transform:uppercase;white-space:nowrap; }
+        #organized-table th:first-child { border-top-left-radius:13px; }
+        #organized-table th:last-child { border-top-right-radius:13px; }
+        #organized-table td { padding:11px 16px;border-bottom:1px solid #edf0f7;color:#505976;font-variant-numeric:tabular-nums; }
+        #organized-table tbody tr:nth-child(even) td { background:#fafbff; }
+        #organized-table tbody tr:hover td { background:#edfcf7; }
+        #organized-table td:first-child { color:#9ba2bb;width:90px; }
+        #organized-table td.value-cell { color:#22294b;font-weight:800; }
+        .organized-footer { display:flex;align-items:center;justify-content:space-between;gap:13px;flex-wrap:wrap;padding-top:16px; }
+        .organized-pager { display:flex;align-items:center;gap:9px; }
+        #organized-page-info { color:#69728e;font-size:11px;font-weight:700; }
+        #organized-page-size { min-height:36px;border:1px solid #e1e7f4;border-radius:10px;padding:7px 10px;background:#fff;color:#4a5270;font-size:11px; }
+        .organized-empty { padding:28px 16px !important;text-align:center !important;color:#8790ac !important; }
+        @media (max-width:700px) {
+            .btn-primary,.btn-secondary,.btn-utility { min-height:40px;padding:10px 12px;font-size:11px; }
+            .organized-kpi { flex:1;min-width:0;padding:11px; }
+            .organized-kpi strong { font-size:18px; }
+            .organized-toolbar { align-items:stretch; }
+            .organized-search-wrap { max-width:none;flex-basis:100%; }
+            .organized-table-wrap { max-height:55vh; }
+            #organized-table th,#organized-table td { padding:10px 12px; }
+            .organized-footer { align-items:flex-start; }
+        }
+        #main-scroll { padding:clamp(18px,3vw,38px); min-height:0; min-width:0; overscroll-behavior-y:contain; }
         #main-scroll section { animation:fadeIn .34s ease-out; }
+        .summary-data-panel { min-width:0; padding:16px; border:1px solid #e5eaf4; border-radius:16px; background:linear-gradient(145deg,#fff,#f8faff); }
+        .summary-data-values { min-height:88px; max-height:230px; overflow:auto; overflow-wrap:anywhere; white-space:normal; padding:13px 14px; border:1px solid #e6eaf4; border-radius:12px; background:#fff; color:#37415f; font-size:12px; line-height:1.85; font-variant-numeric:tabular-nums; }
+        .summary-data-values:empty::before { content:'Agrega datos para visualizar este conjunto.'; color:#939bb2; font-style:italic; }
+        .summary-data-meta { display:flex; justify-content:space-between; align-items:center; gap:10px; margin-top:10px; color:#7b849f; font-size:11px; }
+        .summary-data-meta strong { color:#3d4668; font-variant-numeric:tabular-nums; }
+        .formula-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:12px; }
+        .formula-item { border:1px solid #e5eaf4;border-radius:12px;background:#fff;padding:12px 14px;min-width:0; }
+        .formula-item strong { display:block;color:#252b52;font-size:12px;margin-bottom:5px; }
+        .formula-item code { display:block;color:#4f46e5;font-size:12px;white-space:normal;overflow-wrap:anywhere;line-height:1.65; }
+        .formula-item p { color:#69728e;font-size:11px;margin-top:5px;line-height:1.5; }
+        .chart-note { color:#64708d;font-size:12px;line-height:1.65;margin-top:12px;padding:10px 12px;border-radius:10px;background:#f6f8fd;border:1px solid #e8ecf6; }
         .bg-utp-blue { background-color:#4f46e5 !important; }
         .text-utp-blue { color:#4f46e5 !important; }
         .border-utp-blue { border-color:#4f46e5 !important; }
@@ -155,7 +271,9 @@
             .floating-note { right:-1%; }
         }
         @media (max-width:700px) {
-            body { height:auto;min-height:100vh;overflow:auto; }
+            /* Estas reglas usan mayor especificidad que las utilidades h-screen/overflow-hidden del body. */
+            body.app-mode { display:block; height:auto !important; min-height:100vh; min-height:100dvh; overflow-x:hidden !important; overflow-y:auto !important; }
+            html:has(body.app-mode) { overflow-y:auto; }
             .welcome-inner { padding:20px 20px 18px; }
             .welcome-tag { font-size:9px;padding:8px 10px; }
             .welcome-grid { grid-template-columns:1fr;gap:10px;padding:48px 0 30px; }
@@ -171,7 +289,9 @@
             .sample-chart { height:100px;gap:7px; }
             .floating-note { right:0;bottom:0; }
             .welcome-footer { flex-direction:column;gap:5px; }
-            .app-shell { height:auto;min-height:100vh;display:flex;flex-direction:column; }
+            .app-shell { height:auto;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column; }
+            .app-main { flex:1 1 auto;height:auto;min-height:0;overflow:visible; }
+            #main-scroll { height:auto;max-height:none;overflow:visible !important;flex:0 0 auto;min-height:0; }
             .app-sidebar { width:100%;flex:0 0 auto;padding:13px 12px 10px; }
             .sidebar-brand { padding:0 5px 12px;border-bottom:0; }
             .sidebar-brand .brand-symbol { width:34px;height:34px;border-radius:11px; }
@@ -183,12 +303,20 @@
             .nav-button { flex:0 0 auto;width:auto;min-height:42px;padding:9px 11px;gap:7px;border-radius:11px; }
             .nav-button i { width:auto;font-size:13px; }
             .nav-button .nav-text { font-size:11px;white-space:nowrap; }
+            .nav-button#btn-organized .nav-text { max-width:104px;overflow:hidden;text-overflow:ellipsis; }
             .nav-button.nav-locked::after { display:none; }
             .app-main { height:auto;min-height:0;overflow:visible; }
             .app-header { min-height:72px;padding:14px 18px; }
             .app-header-kicker { font-size:9px; }
             #data-badge { padding:8px 10px;font-size:10px; }
-            #main-scroll { padding:17px 13px 30px;overflow:visible; }
+            #main-scroll { padding:17px 13px 30px;overflow:visible;flex:0 0 auto;min-height:0; }
+            .summary-data-panel { padding:13px; }
+            .summary-data-values { max-height:190px; }
+            .glass-card { border-radius:17px; }
+            #sec-input > div, #sec-frequencies > div, #sec-interpretations > div { padding:20px; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration:0.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; transition-duration:0.01ms !important; }
         }
         @media (max-width:390px) {
             .welcome-tag { display:none; }
@@ -217,7 +345,7 @@
                     <div class="welcome-eyebrow"><span class="eyebrow-dot"></span>Datos claros. Mejores conclusiones.</div>
                     <h1 class="welcome-title">Estadística <span>descriptiva.</span></h1>
                     <p class="welcome-description">Dale sentido a tus datos. Organiza información, descubre patrones y convierte los resultados estadísticos en conclusiones fáciles de comprender.</p>
-                    <button class="launch-button" onclick="enterApp()"><span>Entrar al analizador</span><i class="fa-solid fa-arrow-right"></i></button>
+                    <button type="button" class="launch-button" onclick="enterApp()"><span>Entrar al analizador</span><i class="fa-solid fa-arrow-right"></i></button>
                     <div class="welcome-meta">
                         <span><i class="fa-solid fa-check-circle"></i> Cálculos automáticos</span>
                         <span><i class="fa-solid fa-chart-column"></i> Gráficas interactivas</span>
@@ -255,23 +383,24 @@
             <div><div class="sidebar-name">Stat<span>Lab</span></div><div class="sidebar-kicker">Análisis estadístico</div></div>
         </div>
         <div class="nav-caption">Herramientas</div>
-        <nav class="app-nav" aria-label="Secciones del analizador">
-            <button onclick="switchTab('input')" id="btn-input" class="nav-button is-active" title="Ingreso de datos"><i class="fa-solid fa-database"></i><span class="nav-text">Datos</span></button>
-            <button onclick="switchTab('dashboard')" id="btn-dashboard" class="nav-button nav-locked" title="Resumen estadístico"><i class="fa-solid fa-chart-pie"></i><span class="nav-text">Resumen</span></button>
-            <button onclick="switchTab('frequencies')" id="btn-frequencies" class="nav-button nav-locked" title="Tablas de frecuencia"><i class="fa-solid fa-table-list"></i><span class="nav-text">Frecuencias</span></button>
-            <button onclick="switchTab('charts')" id="btn-charts" class="nav-button nav-locked" title="Gráficas"><i class="fa-solid fa-chart-column"></i><span class="nav-text">Gráficas</span></button>
-            <button onclick="switchTab('interpretations')" id="btn-interpretations" class="nav-button nav-locked" title="Interpretación de resultados"><i class="fa-solid fa-lightbulb"></i><span class="nav-text">Interpretación</span></button>
+        <nav class="app-nav" aria-label="Secciones del analizador" role="tablist">
+            <button type="button" role="tab" aria-selected="true" aria-controls="sec-input" onclick="switchTab('input')" id="btn-input" class="nav-button is-active" title="Ingreso de datos"><i class="fa-solid fa-database"></i><span class="nav-text">Datos</span></button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="sec-organized" onclick="switchTab('organized')" id="btn-organized" class="nav-button nav-locked" title="Ver todos los datos ordenados"><i class="fa-solid fa-arrow-down-wide-short"></i><span class="nav-text">Datos organizados</span></button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="sec-dashboard" onclick="switchTab('dashboard')" id="btn-dashboard" class="nav-button nav-locked" title="Resumen estadístico"><i class="fa-solid fa-chart-pie"></i><span class="nav-text">Resumen</span></button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="sec-frequencies" onclick="switchTab('frequencies')" id="btn-frequencies" class="nav-button nav-locked" title="Tablas de frecuencia"><i class="fa-solid fa-table-list"></i><span class="nav-text">Frecuencias</span></button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="sec-charts" onclick="switchTab('charts')" id="btn-charts" class="nav-button nav-locked" title="Gráficas"><i class="fa-solid fa-chart-column"></i><span class="nav-text">Gráficas</span></button>
+            <button type="button" role="tab" aria-selected="false" aria-controls="sec-interpretations" onclick="switchTab('interpretations')" id="btn-interpretations" class="nav-button nav-locked" title="Interpretación de resultados"><i class="fa-solid fa-lightbulb"></i><span class="nav-text">Interpretación</span></button>
         </nav>
         <div class="sidebar-bottom"><strong>StatLab · UTP</strong><br>Estadística descriptiva<br><span style="color:#647094">Visualiza · Comprende · Decide</span></div>
     </aside>
 
     <!-- Main Content -->
-    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50 relative">
+    <main class="app-main">
         <!-- Header -->
         <header class="app-header">
             <div><div class="app-header-kicker">STATLAB / ESPACIO DE TRABAJO</div><h2 id="section-title">Ingreso y gestión de datos</h2></div>
             <div class="flex items-center gap-3">
-                <button class="header-action" onclick="resetForNewAnalysis()" title="Limpiar y empezar un nuevo análisis"><i class="fa-solid fa-plus"></i><span>Nuevo análisis</span></button>
+                <button type="button" class="btn-utility" onclick="resetForNewAnalysis()" title="Limpiar y empezar un nuevo análisis"><i class="fa-solid fa-plus"></i><span>Nuevo análisis</span></button>
                 <div id="data-badge" class="hidden rounded-full font-semibold flex items-center"><i class="fa-solid fa-circle-check mr-2"></i> <span>Registros</span><span id="n-count" class="ml-1">0</span></div>
             </div>
         </header>
@@ -280,39 +409,67 @@
         <div class="flex-1 overflow-y-auto p-6 custom-scrollbar" id="main-scroll">
             
             <!-- SECCIÓN 1: INGRESO DE DATOS -->
-            <section id="sec-input" class="max-w-5xl mx-auto fade-in">
+            <section id="sec-input" role="tabpanel" aria-labelledby="btn-input" class="max-w-5xl mx-auto fade-in">
                 <div class="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-utp-blue to-utp-accent"></div>
                     <h3 class="text-xl font-bold mb-4 text-gray-800"><i class="fa-solid fa-keyboard mr-2 text-utp-blue"></i> Empieza con tus datos</h3>
-                    
+
+                    <!-- La detección automática es práctica, pero códigos como 1, 2, 3 pueden ser categorías. -->
+                    <div class="mb-5 rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-900">
+                        <strong><i class="fa-solid fa-users mr-2"></i>Tipo de análisis: poblacional.</strong>
+                        <span> Las medidas de dispersión y los momentos se calculan sobre el conjunto completo ingresado; la varianza utiliza divisor N.</span>
+                    </div>
+                    <div class="mb-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <label for="variable-type" class="block text-sm font-bold text-slate-700 mb-2">¿Qué tipo de variable vas a analizar?</label>
+                        <select id="variable-type" class="w-full sm:max-w-md border border-slate-300 rounded-lg bg-white px-3 py-3 text-sm text-slate-700 focus:ring-2 focus:ring-indigo-200">
+                            <option value="auto">Detectar automáticamente</option>
+                            <option value="quantitative-discrete">Cuantitativa discreta</option>
+                            <option value="quantitative-continuous">Cuantitativa continua</option>
+                            <option value="qualitative-nominal">Cualitativa nominal</option>
+                            <option value="qualitative-ordinal">Cualitativa ordinal</option>
+                        </select>
+                        <p class="text-xs text-slate-500 mt-2">La detección automática interpreta una lista totalmente numérica como cuantitativa. Selecciona manualmente la naturaleza conceptual cuando los números sean códigos, o cuando una variable continua esté registrada con enteros.</p>
+                        <div id="ordinal-order-field" class="hidden mt-4">
+                            <label for="ordinal-order" class="block text-sm font-bold text-slate-700 mb-2">Orden de los niveles (de menor a mayor)</label>
+                            <input id="ordinal-order" type="text" class="w-full border border-slate-300 rounded-lg bg-white px-3 py-3 text-sm text-slate-700" placeholder="Muy bajo > Bajo > Medio > Alto > Muy alto" autocomplete="off">
+                            <p class="text-xs text-slate-500 mt-2">Escribe todos los niveles observados separados por el símbolo &gt;. Si los niveles son códigos numéricos (1, 2, 3…), se pueden ordenar automáticamente.</p>
+                        </div>
+                    </div>
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <!-- Opción Manual -->
                         <div class="bg-gray-50 p-6 rounded-xl border border-gray-200 hover:shadow-md transition-shadow">
                             <h4 class="font-semibold text-lg mb-2 text-utp-blue">Pegar datos manualmente</h4>
-                            <p class="text-sm text-gray-500 mb-4">Ingresa los datos separados por comas (ej: 12, 15.5, 18, 20)</p>
+                            <p class="text-sm text-gray-500 mb-4">Separa los valores con comas y usa punto decimal (ej.: 12, 15.5, 18, 20). Si usas coma decimal, separa los valores con punto y coma: 12,5; 15,2; 18,0.</p>
                             <textarea id="manual-data" rows="5" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-utp-blue focus:border-utp-blue outline-none transition-all resize-none shadow-inner" placeholder="Ej: 1, 2, 3, 4, 5..."></textarea>
-                            <button onclick="processManualData()" class="mt-4 w-full bg-utp-blue text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-all transform hover:scale-[1.02] shadow-lg font-semibold">
-                                <i class="fa-solid fa-cogs mr-2"></i> Analizar mis datos
-                            </button>
+                            <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <button type="button" onclick="processManualData()" class="btn-primary w-full">
+                                    <i class="fa-solid fa-cogs mr-2"></i> Analizar mis datos
+                                </button>
+                                <button type="button" onclick="loadSampleData()" class="btn-secondary w-full">
+                                    <i class="fa-solid fa-flask mr-2"></i> Probar un ejemplo
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Opción CSV -->
                         <div class="bg-gray-50 p-6 rounded-xl border border-gray-200 hover:shadow-md transition-shadow flex flex-col justify-between">
                             <div>
-                                <h4 class="font-semibold text-lg mb-2 text-utp-blue">Importar archivo CSV</h4>
-                                <p class="text-sm text-gray-500 mb-4">Carga un archivo .csv con tus observaciones; puedes usar una columna o valores separados por comas.</p>
+                                <h4 class="font-semibold text-lg mb-2 text-utp-blue">Importar archivo CSV o Excel</h4>
+                                <p class="text-sm text-gray-500 mb-4">Carga un archivo .csv, .xlsx o .xls. Usa una sola variable: un dato por fila en una columna, o una única fila con las observaciones separadas.</p>
                                 
                                 <div class="flex items-center justify-center w-full">
-                                    <label for="dropzone-file" class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-blue-300 rounded-lg cursor-pointer bg-blue-50 hover:bg-blue-100 transition-colors">
+                                    <label for="dropzone-file" class="upload-zone flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-blue-300 rounded-lg cursor-pointer bg-blue-50 hover:bg-blue-100 transition-colors">
                                         <div class="flex flex-col items-center justify-center pt-5 pb-6">
                                             <i class="fa-solid fa-cloud-arrow-up text-3xl text-blue-500 mb-2"></i>
                                             <p class="text-sm text-gray-500"><span class="font-semibold">Clic para subir</span> o arrastra el archivo</p>
                                         </div>
-                                        <input id="dropzone-file" type="file" accept=".csv" class="hidden" onchange="handleFileUpload(event)" />
+                                        <input id="dropzone-file" type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel" class="hidden" aria-label="Seleccionar archivo CSV o Excel" onchange="handleFileUpload(event)" />
                                     </label>
                                 </div>
                             </div>
-                            <div id="file-name-display" class="mt-2 text-sm text-center text-green-600 font-semibold h-5"></div>
+                            <p class="mt-3 text-xs text-gray-500">Para evitar mezclar variables, el archivo debe contener una sola columna de observaciones (o una sola fila con los datos). Si contiene varias columnas con datos, prepara una copia con únicamente la variable que vas a analizar.</p>
+                            <div id="file-name-display" class="mt-2 text-sm text-center text-green-600 font-semibold min-h-5"></div>
                         </div>
                     </div>
 
@@ -324,9 +481,106 @@
                 </div>
             </section>
 
+            <!-- NUEVA SECCIÓN: DATOS ORGANIZADOS -->
+            <section id="sec-organized" role="tabpanel" aria-labelledby="btn-organized" class="hidden max-w-7xl mx-auto fade-in">
+                <div class="glass-card rounded-2xl shadow-xl p-5 md:p-8 mb-6">
+                    <div class="flex flex-wrap items-start justify-between gap-5">
+                        <div class="max-w-2xl">
+                            <div class="app-header-kicker">ORDEN Y EXPLORACIÓN</div>
+                            <h3 class="text-2xl md:text-3xl font-bold text-gray-800 mb-2"><i class="fa-solid fa-arrow-down-wide-short mr-2" style="color:#4f46e5"></i>Datos organizados</h3>
+                            <p class="text-sm md:text-base text-gray-500 leading-relaxed">Si pegas una lista desordenada o cargas cientos de observaciones, aquí puedes revisarlas en orden, buscar valores concretos y consultar cuántas veces aparece cada uno.</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" class="btn-secondary btn-compact" onclick="toggleOrganizedSort()" id="organized-sort-button" title="Cambiar el sentido del orden"><i class="fa-solid fa-arrow-down-short-wide"></i><span>Orden ascendente</span></button>
+                            <button type="button" class="btn-utility btn-compact" onclick="copyOrganizedData()" title="Copiar el conjunto completo ordenado"><i class="fa-regular fa-copy"></i><span>Copiar datos</span></button>
+                            <button type="button" class="btn-primary btn-compact" onclick="downloadOrganizedCsv()" title="Descargar los datos organizados"><i class="fa-solid fa-file-arrow-down"></i><span>Exportar CSV</span></button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap gap-3 mt-6" aria-live="polite">
+                        <div class="organized-kpi"><small>Observaciones</small><strong id="organized-total">0</strong></div>
+                        <div class="organized-kpi"><small>Valores distintos</small><strong id="organized-unique">0</strong></div>
+                        <div class="organized-kpi"><small>Tipo de variable</small><strong id="organized-kind">—</strong></div>
+                        <div class="organized-kpi" id="organized-range-card"><small>Rango</small><strong id="organized-range">—</strong></div>
+                    </div>
+
+                    <div class="organized-toolbar">
+                        <label class="organized-search-wrap" for="organized-search">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                            <input type="search" id="organized-search" placeholder="Buscar un dato o categoría..." autocomplete="off" aria-label="Buscar dentro de los datos organizados">
+                        </label>
+                        <div class="flex flex-wrap gap-2" role="group" aria-label="Vista de datos">
+                            <button type="button" id="organized-view-observations" class="view-toggle is-selected" onclick="setOrganizedView('observations')"><i class="fa-solid fa-list-ol"></i> Lista ordenada</button>
+                            <button type="button" id="organized-view-frequency" class="view-toggle" onclick="setOrganizedView('frequency')"><i class="fa-solid fa-chart-column"></i> Resumen por valor</button>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                        <p id="organized-view-description" class="text-xs text-gray-500">Todas las observaciones, ordenadas de menor a mayor.</p>
+                        <p id="organized-result-count" class="text-xs font-bold" style="color:#59627f">0 resultados</p>
+                    </div>
+
+                    <div class="organized-table-wrap custom-scrollbar">
+                        <table id="organized-table" aria-describedby="organized-view-description">
+                            <thead id="organized-table-head"></thead>
+                            <tbody id="organized-table-body">
+                                <tr><td class="organized-empty" colspan="3">Agrega datos para verlos organizados.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="organized-footer">
+                        <div class="flex items-center gap-2">
+                            <label for="organized-page-size" class="text-xs font-semibold text-gray-500">Filas por página</label>
+                            <select id="organized-page-size" aria-label="Filas por página">
+                                <option value="25">25</option>
+                                <option value="50" selected>50</option>
+                                <option value="100">100</option>
+                                <option value="250">250</option>
+                            </select>
+                        </div>
+                        <div class="organized-pager">
+                            <button type="button" class="page-button" id="organized-prev" onclick="changeOrganizedPage(-1)" disabled aria-label="Página anterior"><i class="fa-solid fa-chevron-left"></i></button>
+                            <span id="organized-page-info">Página 1 de 1</span>
+                            <button type="button" class="page-button" id="organized-next" onclick="changeOrganizedPage(1)" disabled aria-label="Página siguiente"><i class="fa-solid fa-chevron-right"></i></button>
+                        </div>
+                    </div>
+                    <p class="mt-4 text-xs leading-relaxed text-gray-400"><i class="fa-solid fa-circle-info mr-1"></i>La paginación solo organiza la visualización: la exportación y la copia incluyen el conjunto completo, no únicamente las filas visibles.</p>
+                </div>
+            </section>
+
             <!-- SECCIÓN 2: DASHBOARD RESULTADOS -->
-            <section id="sec-dashboard" class="hidden max-w-7xl mx-auto fade-in">
-                
+            <section id="sec-dashboard" role="tabpanel" aria-labelledby="btn-dashboard" class="hidden max-w-7xl mx-auto fade-in">
+
+                <!-- Datos originales y datos ordenados; esta vista no modifica el conjunto usado para calcular. -->
+                <div class="glass-card rounded-2xl p-5 md:p-6 mb-6">
+                    <div class="mb-5">
+                        <div class="app-header-kicker">VISTA DEL CONJUNTO</div>
+                        <h3 class="text-xl md:text-2xl font-bold text-gray-800 mb-1"><i class="fa-solid fa-list-check mr-2" style="color:#4f46e5"></i>Datos del análisis</h3>
+                        <p class="text-sm text-gray-500">Compara las observaciones en el orden en que se ingresaron con el mismo conjunto organizado. Los valores repetidos se conservan.</p>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <article class="summary-data-panel">
+                            <div class="flex items-center justify-between gap-3 mb-2">
+                                <h4 class="font-bold text-gray-800"><i class="fa-solid fa-keyboard mr-2" style="color:#4f46e5"></i>Datos ingresados</h4>
+                                <span class="text-xs font-bold text-gray-400">ORIGINAL</span>
+                            </div>
+                            <p class="text-xs text-gray-500 mb-3">Se conserva el orden de entrada.</p>
+                            <div id="summary-original-data" class="summary-data-values custom-scrollbar" role="region" aria-label="Datos ingresados en el orden original" tabindex="0"></div>
+                            <div class="summary-data-meta"><span>Observaciones</span><strong id="summary-original-count">0</strong></div>
+                        </article>
+                        <article class="summary-data-panel">
+                            <div class="flex items-center justify-between gap-3 mb-2">
+                                <h4 class="font-bold text-gray-800"><i class="fa-solid fa-arrow-down-1-9 mr-2" style="color:#0f9f83"></i>Datos organizados</h4>
+                                <span id="summary-sorted-order-tag" class="text-xs font-bold" style="color:#0f9f83">ASCENDENTE</span>
+                            </div>
+                            <p id="summary-sorted-note" class="text-xs text-gray-500 mb-3">Ordenados de menor a mayor.</p>
+                            <div id="summary-sorted-data" class="summary-data-values custom-scrollbar" role="region" aria-label="Datos ordenados de forma ascendente" tabindex="0"></div>
+                            <div class="summary-data-meta"><span>Observaciones</span><strong id="summary-sorted-count">0</strong></div>
+                        </article>
+                    </div>
+                </div>
+
                 <!-- Identificación de Variables -->
                 <div class="bg-white p-4 rounded-xl shadow-sm mb-6 flex flex-wrap gap-4 items-center border-l-4 border-utp-accent">
                     <div class="flex items-center mr-6">
@@ -351,6 +605,23 @@
                         </div>
                     </div>
                 </div>
+
+                <details id="quantitative-formulas" class="glass-card rounded-2xl p-5 md:p-6 mb-6">
+                    <summary class="cursor-pointer select-none font-bold text-gray-800"><i class="fa-solid fa-square-root-variable mr-2" style="color:#4f46e5"></i>Fórmulas y convenciones matemáticas</summary>
+                    <p class="text-sm text-gray-500 mt-3 mb-4">Las siguientes expresiones corresponden al análisis poblacional implementado. Los cuartiles se estiman mediante interpolación lineal de tipo 7 (posición p·(N−1)); otros programas pueden usar convenciones diferentes.</p>
+                    <div class="formula-grid">
+                        <div class="formula-item"><strong>Media aritmética</strong><code>μ = (Σ xᵢ) / N</code><p>Suma de las observaciones dividida entre el número total de datos.</p></div>
+                        <div class="formula-item"><strong>Mediana y moda</strong><code>Me = valor central ordenado</code><code>Mo = valor(es) con frecuencia máxima</code><p>Si N es par, la mediana es el promedio de los dos valores centrales; si todos los valores aparecen una vez, se informa amodal.</p></div>
+                        <div class="formula-item"><strong>Cuartiles y rango intercuartílico</strong><code>r = p(N−1); Qₚ = interpolación en la posición r</code><code>RIC = Q₃ − Q₁</code><p>Se usan p = 0,25; 0,50 y 0,75.</p></div>
+                        <div class="formula-item"><strong>Rango</strong><code>R = máximo(x) − mínimo(x)</code></div>
+                        <div class="formula-item"><strong>Varianza y desviación estándar poblacionales</strong><code>σ² = Σ(xᵢ − μ)² / N</code><code>σ = √σ²</code><p>Se divide entre N porque se describe la población ingresada, no una muestra.</p></div>
+                        <div class="formula-item"><strong>Coeficiente de variación</strong><code>CV = (σ / |μ|) × 100 %</code><p>Se considera no definido cuando μ = 0; su interpretación requiere una escala de razón con cero significativo.</p></div>
+                        <div class="formula-item"><strong>Momentos centrales</strong><code>mₖ = Σ(xᵢ − μ)ᵏ / N, para k = 1, 2, 3, 4</code><p>Teóricamente m₁ = 0 y m₂ = σ².</p></div>
+                        <div class="formula-item"><strong>Asimetría y curtosis</strong><code>γ₁ = m₃ / σ³</code><code>β₂ = m₄ / σ⁴; exceso = β₂ − 3</code><p>La interfaz muestra β₂ (la referencia de la distribución normal es 3), no el exceso de curtosis.</p></div>
+                        <div class="formula-item"><strong>Atípicos: criterio de Tukey</strong><code>LI = Q₁ − 1,5·RIC</code><code>LS = Q₃ + 1,5·RIC</code><p>Se señalan las observaciones estrictamente menores que LI o mayores que LS.</p></div>
+                        <div class="formula-item"><strong>Datos agrupados: regla de Sturges</strong><code>k ≈ 1 + 3,322·log₁₀(N)</code><code>Amplitud = (máximo − mínimo) / k</code><p>El número de clases se redondea al entero más cercano; se agrupan variables cuantitativas con más de 10 valores distintos.</p></div>
+                    </div>
+                </details>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     
@@ -446,11 +717,11 @@
                         </div>
                         <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="bg-green-50 p-3 rounded-lg border border-green-200 flex justify-between items-center">
-                                <span class="text-green-800 font-bold" title="m3 / σ³">Coef. Asimetría (Pearson)</span>
+                                <span class="text-green-800 font-bold" title="Momento central de orden 3 dividido por la desviación estándar al cubo.">Coeficiente de asimetría</span>
                                 <span id="res-skewness" class="font-bold text-xl text-green-900">-</span>
                             </div>
                             <div class="bg-green-50 p-3 rounded-lg border border-green-200 flex justify-between items-center">
-                                <span class="text-green-800 font-bold" title="m4 / σ⁴">Coef. Curtosis</span>
+                                <span class="text-green-800 font-bold" title="Momento central de orden 4 dividido por la desviación estándar a la cuarta potencia; la referencia normal es 3.">Curtosis (momento 4)</span>
                                 <span id="res-kurtosis" class="font-bold text-xl text-green-900">-</span>
                             </div>
                         </div>
@@ -479,13 +750,16 @@
             </section>
 
             <!-- SECCIÓN 3: TABLAS DE FRECUENCIA -->
-            <section id="sec-frequencies" class="hidden max-w-6xl mx-auto fade-in">
+            <section id="sec-frequencies" role="tabpanel" aria-labelledby="btn-frequencies" class="hidden max-w-6xl mx-auto fade-in">
                 <div class="glass-card rounded-2xl shadow-xl p-8 mb-6">
-                    <div class="flex justify-between items-end mb-6 border-b pb-4">
+                    <div class="flex flex-wrap justify-between items-end gap-4 mb-6 border-b pb-4">
                         <div>
                             <h3 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-table-list text-utp-blue mr-2"></i> Módulo 2: Organización de Datos</h3>
                             <p class="text-gray-500 mt-1" id="table-description">Distribución de Frecuencias</p>
                         </div>
+                        <button type="button" class="btn-primary btn-compact" onclick="downloadFrequencyCsv()" title="Descargar la tabla de frecuencias como CSV">
+                            <i class="fa-solid fa-file-csv"></i><span>Exportar tabla CSV</span>
+                        </button>
                         <div id="sturges-info" class="hidden text-right bg-blue-50 p-3 rounded-lg border border-blue-100">
                             <p class="text-xs text-blue-800 font-bold uppercase mb-1">Regla de Sturges Aplicada</p>
                             <div class="flex gap-4 text-sm">
@@ -515,7 +789,7 @@
                                     <td class="px-6 py-3">Total</td>
                                     <td class="px-6 py-3 text-center" id="sum-fi">0</td>
                                     <td class="px-6 py-3"></td>
-                                    <td class="px-6 py-3 text-center" id="sum-hi">1.000</td>
+                                    <td class="px-6 py-3 text-center" id="sum-hi">0.000</td>
                                     <td class="px-6 py-3"></td>
                                     <td class="px-6 py-3 text-center">100%</td>
                                 </tr>
@@ -526,27 +800,35 @@
             </section>
 
             <!-- SECCIÓN 4: GRÁFICAS -->
-            <section id="sec-charts" class="hidden max-w-7xl mx-auto fade-in">
+            <section id="sec-charts" role="tabpanel" aria-labelledby="btn-charts" class="hidden max-w-7xl mx-auto fade-in">
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     
                     <div class="glass-card p-6 rounded-2xl shadow-lg flex flex-col items-center">
                         <h3 class="text-lg font-bold text-gray-800 mb-4 w-full text-center border-b pb-2">Histograma / Gráfico de Barras</h3>
                         <div class="w-full h-[350px] relative">
-                            <canvas id="barChart"></canvas>
+                            <canvas id="barChart" role="img" aria-label="Gráfico de barras o histograma"></canvas>
                         </div>
                     </div>
 
                     <div class="glass-card p-6 rounded-2xl shadow-lg flex flex-col items-center">
                         <h3 class="text-lg font-bold text-gray-800 mb-4 w-full text-center border-b pb-2">Gráfico Circular</h3>
                         <div class="w-full h-[350px] relative">
-                            <canvas id="pieChart"></canvas>
+                            <canvas id="pieChart" role="img" aria-label="Gráfico circular de frecuencias"></canvas>
                         </div>
                     </div>
 
                     <div class="glass-card p-6 rounded-2xl shadow-lg flex flex-col items-center lg:col-span-2">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 w-full text-center border-b pb-2">Polígono de frecuencias y forma de la distribución</h3>
+                        <div id="distribution-container" class="w-full h-[300px] relative">
+                            <canvas id="distributionChart" role="img" aria-label="Polígono de frecuencias para visualizar la forma de la distribución"></canvas>
+                        </div>
+                        <p id="distribution-shape-summary" class="chart-note w-full">La interpretación de la asimetría aparecerá cuando se analicen datos cuantitativos.</p>
+                    </div>
+
+                    <div class="glass-card p-6 rounded-2xl shadow-lg flex flex-col items-center lg:col-span-2">
                         <h3 class="text-lg font-bold text-gray-800 mb-4 w-full text-center border-b pb-2">Diagrama de Caja y Bigotes (Boxplot)</h3>
-                        <div class="w-full h-[300px] relative boxplot-container">
-                            <canvas id="boxChart"></canvas>
+                        <div id="boxplot-container" class="w-full h-[300px] relative boxplot-container">
+                            <canvas id="boxChart" role="img" aria-label="Diagrama de caja y bigotes"></canvas>
                         </div>
                         <p class="text-sm text-gray-500 mt-2 text-center w-full">Visualización de la distribución, cuartiles y valores atípicos.</p>
                     </div>
@@ -555,7 +837,7 @@
             </section>
 
             <!-- SECCIÓN 5: INTERPRETACIONES -->
-            <section id="sec-interpretations" class="hidden max-w-5xl mx-auto fade-in">
+            <section id="sec-interpretations" role="tabpanel" aria-labelledby="btn-interpretations" class="hidden max-w-5xl mx-auto fade-in">
                 <div class="glass-card rounded-2xl shadow-xl p-8 border-l-8 border-utp-accent">
                     <h3 class="text-2xl font-bold text-gray-800 mb-6"><i class="fa-solid fa-wand-magic-sparkles text-utp-accent mr-2"></i> Análisis e Interpretación de Resultados</h3>
                     
@@ -569,31 +851,60 @@
     </main>
 
     <script>
-        // ESTADO GLOBAL
+        /* =====================================================================
+           STATLAB · LÓGICA DE LA APLICACIÓN
+           Variables globales, navegación, entrada/validación, cálculos,
+           construcción de tablas, gráficos e interpretación.
+           ===================================================================== */
+
+        // ---------------------------- 1. Estado -------------------------------
+        // globalData conserva los datos originales ya normalizados: números para
+        // variables cuantitativas y cadenas para variables cualitativas.
         let globalData = [];
         let isQuantitative = true;
         let isContinuous = false;
+        let isQualitativeOrdinal = false;
+        let ordinalCategoryOrder = [];
+        let ordinalRankMap = new Map();
         let sortedData = [];
         let stats = {};
         let frequencyData = [];
+        let organizedPage = 1;
+        let organizedView = 'observations'; // 'observations' o 'frequency'.
+        let organizedSortDirection = 'asc';
+        let organizedAscendingCache = [];
 
         // Instancias de gráficos
         let chartInstances = {
             bar: null,
             pie: null,
+            distribution: null,
             box: null
         };
 
-        // NAVEGACIÓN Y EXPERIENCIA DE USUARIO
+        // ----------------------- 2. Interfaz y navegación ---------------------
         let toastTimer = null;
+        let errorTimer = null;
+
+        /** Muestra una notificación breve, sin bloquear la interacción. */
         function showToast(message) {
             const toast = document.getElementById('toast-message');
-            document.getElementById('toast-text').innerText = message;
+            document.getElementById('toast-text').textContent = message;
             toast.classList.remove('hidden');
             if (toastTimer) clearTimeout(toastTimer);
             toastTimer = setTimeout(() => toast.classList.add('hidden'), 3600);
         }
 
+        /** Muestra un error de validación en el formulario de ingreso. */
+        function showError(message) {
+            const errorBox = document.getElementById('error-msg');
+            document.getElementById('error-text').textContent = message;
+            errorBox.classList.remove('hidden');
+            if (errorTimer) clearTimeout(errorTimer);
+            errorTimer = setTimeout(() => errorBox.classList.add('hidden'), 6000);
+        }
+
+        /** Cambia de la portada al espacio de trabajo. */
         function enterApp() {
             document.getElementById('welcome-screen').classList.add('hidden');
             document.getElementById('app-shell').classList.remove('hidden');
@@ -601,586 +912,1341 @@
             switchTab('input');
         }
 
+        /** Limpia los gráficos y los resultados antes de iniciar otro análisis. */
         function resetForNewAnalysis() {
-            Object.values(chartInstances).forEach(chart => { if (chart) chart.destroy(); });
-            chartInstances = { bar: null, pie: null, box: null };
+            if (globalData.length > 0 && !window.confirm('¿Deseas iniciar un análisis nuevo? Se borrarán los resultados actuales.')) {
+                return;
+            }
+
+            Object.values(chartInstances).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+            chartInstances = { bar: null, pie: null, distribution: null, box: null };
             globalData = [];
             sortedData = [];
             stats = {};
             frequencyData = [];
             isQuantitative = true;
             isContinuous = false;
+            isQualitativeOrdinal = false;
+            ordinalCategoryOrder = [];
+            ordinalRankMap = new Map();
+            organizedPage = 1;
+            organizedView = 'observations';
+            organizedSortDirection = 'asc';
+            organizedAscendingCache = [];
+            renderSummaryData();
+
             document.getElementById('manual-data').value = '';
+            document.getElementById('variable-type').value = 'auto';
+            document.getElementById('ordinal-order').value = '';
+            document.getElementById('ordinal-order-field').classList.add('hidden');
             document.getElementById('dropzone-file').value = '';
-            document.getElementById('file-name-display').innerText = '';
+            document.getElementById('file-name-display').textContent = '';
             document.getElementById('data-badge').classList.add('hidden');
-            document.getElementById('n-count').innerText = '0';
-            document.getElementById('freq-table-body').innerHTML = '';
-            document.getElementById('sum-fi').innerText = '0';
-            document.getElementById('sum-hi').innerText = '1.000';
+            document.getElementById('n-count').textContent = '0';
+            document.getElementById('freq-table-body').replaceChildren();
+            document.getElementById('sum-fi').textContent = '0';
+            document.getElementById('sum-hi').textContent = '0.000';
             document.getElementById('sturges-info').classList.add('hidden');
-            ['btn-dashboard', 'btn-frequencies', 'btn-charts', 'btn-interpretations'].forEach(id => {
+            document.getElementById('error-msg').classList.add('hidden');
+            document.getElementById('interpretation-content').replaceChildren();
+            document.getElementById('organized-search').value = '';
+            document.getElementById('organized-page-size').value = '50';
+            document.getElementById('organized-total').textContent = '0';
+            document.getElementById('organized-unique').textContent = '0';
+            document.getElementById('organized-kind').textContent = '—';
+            document.getElementById('organized-range').textContent = '—';
+            document.getElementById('organized-table-head').replaceChildren();
+            document.getElementById('organized-table-body').replaceChildren();
+            document.getElementById('organized-result-count').textContent = '0 resultados';
+            document.getElementById('organized-page-info').textContent = 'Página 1 de 1';
+            document.getElementById('organized-prev').disabled = true;
+            document.getElementById('organized-next').disabled = true;
+            document.getElementById('organized-view-observations').classList.add('is-selected');
+            document.getElementById('organized-view-frequency').classList.remove('is-selected');
+            updateOrganizedSortButton();
+            document.getElementById('boxplot-container').innerHTML = '<canvas id="boxChart" aria-label="Diagrama de caja y bigotes"></canvas>';
+            document.getElementById('distribution-container').innerHTML = '<canvas id="distributionChart" role="img" aria-label="Polígono de frecuencias"></canvas>';
+            document.getElementById('distribution-shape-summary').textContent = 'La interpretación de la asimetría aparecerá cuando se analicen datos cuantitativos.';
+
+            ['btn-organized', 'btn-dashboard', 'btn-frequencies', 'btn-charts', 'btn-interpretations'].forEach(id => {
                 document.getElementById(id).classList.add('nav-locked');
+                document.getElementById(id).setAttribute('aria-selected', 'false');
             });
             resetDashboard();
-            document.getElementById('interpretation-content').innerHTML = '';
             switchTab('input');
             showToast('Listo. Agrega los datos de tu nuevo análisis.');
         }
 
+        /**
+         * Activa la pestaña solicitada y bloquea las de resultados cuando aún
+         * no existe un conjunto válido. También mantiene el estado accesible.
+         */
         function switchTab(tabId) {
+            const tabIds = ['input', 'organized', 'dashboard', 'frequencies', 'charts', 'interpretations'];
+            if (!tabIds.includes(tabId)) return;
+
             if (globalData.length === 0 && tabId !== 'input') {
-                showToast('Primero agrega o importa tus datos desde la pestaña Datos.');
+                showToast('Primero agrega o importa datos desde la pestaña Datos.');
                 tabId = 'input';
             }
 
-            ['input', 'dashboard', 'frequencies', 'charts', 'interpretations'].forEach(id => {
-                document.getElementById(`sec-${id}`).classList.add('hidden');
-                const btn = document.getElementById(`btn-${id}`);
-                if (btn) {
-                    btn.classList.remove('is-active');
-                    btn.classList.toggle('nav-locked', globalData.length === 0 && id !== 'input');
-                }
+            tabIds.forEach(id => {
+                document.getElementById(`sec-${id}`).classList.toggle('hidden', id !== tabId);
+                const button = document.getElementById(`btn-${id}`);
+                button.classList.toggle('is-active', id === tabId);
+                button.classList.toggle('nav-locked', globalData.length === 0 && id !== 'input');
+                button.setAttribute('aria-selected', String(id === tabId));
+                button.tabIndex = id === tabId ? 0 : -1;
             });
 
-            document.getElementById(`sec-${tabId}`).classList.remove('hidden');
-            const activeBtn = document.getElementById(`btn-${tabId}`);
-            if (activeBtn) {
-                activeBtn.classList.add('is-active');
-                activeBtn.classList.remove('nav-locked');
-            }
-
             const titles = {
-                'input': 'Ingreso y gestión de datos',
-                'dashboard': 'Resumen estadístico',
-                'frequencies': 'Tablas de frecuencia',
-                'charts': 'Exploración visual',
-                'interpretations': 'Interpretación de resultados'
+                input: 'Ingreso y gestión de datos',
+                organized: 'Datos organizados',
+                dashboard: 'Resumen estadístico',
+                frequencies: 'Tablas de frecuencia',
+                charts: 'Exploración visual',
+                interpretations: 'Interpretación de resultados'
             };
-            document.getElementById('section-title').innerText = titles[tabId];
-            document.getElementById('main-scroll').scrollTop = 0;
+            document.getElementById('section-title').textContent = titles[tabId];
+            // Escritorio: desplaza el contenedor interno. Móvil: desplaza el documento completo.
+            const mainScroll = document.getElementById('main-scroll');
+            if (mainScroll) mainScroll.scrollTop = 0;
+            window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
             if (tabId === 'charts' && globalData.length > 0) renderCharts();
         }
 
-        // MÓDULO 1: INGRESO Y PROCESAMIENTO
-        function showError(msg) {
-            const errDiv = document.getElementById('error-msg');
-            const errText = document.getElementById('error-text');
-            errText.innerText = msg;
-            errDiv.classList.remove('hidden');
-            setTimeout(() => { errDiv.classList.add('hidden'); }, 5000);
+        // Permite moverse entre pestañas con las flechas izquierda/derecha.
+        document.querySelectorAll('.app-nav [role="tab"]').forEach((button, index, buttons) => {
+            button.addEventListener('keydown', event => {
+                if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                event.preventDefault();
+                let nextIndex = index;
+                if (event.key === 'ArrowRight') nextIndex = (index + 1) % buttons.length;
+                if (event.key === 'ArrowLeft') nextIndex = (index - 1 + buttons.length) % buttons.length;
+                if (event.key === 'Home') nextIndex = 0;
+                if (event.key === 'End') nextIndex = buttons.length - 1;
+                buttons[nextIndex].focus();
+                buttons[nextIndex].click();
+            });
+        });
+
+        // ---------------- 3. Entrada, normalización y validación -------------
+        /**
+         * Convierte una celda a número si representa un número finito.
+         * Acepta notación decimal con punto o coma; también reconoce el formato
+         * regional 1.234,56. Devuelve null si el valor no es numérico.
+         */
+        function parseNumberToken(value) {
+            let token = String(value ?? '').trim().replace(/\s/g, '');
+            if (!token) return null;
+
+            // Separador de miles con punto y decimal con coma: 1.234,56.
+            if (/^[+-]?\d{1,3}(?:\.\d{3})+,\d+$/.test(token)) {
+                token = token.replace(/\./g, '').replace(',', '.');
+            } else if (/^[+-]?(?:\d+,\d+|,\d+)$/.test(token)) {
+                // Decimal con coma: 12,5 o ,5.
+                token = token.replace(',', '.');
+            }
+
+            // Number() por sí solo también acepta cadenas vacías y algunas
+            // representaciones no deseadas; la expresión regular limita el formato.
+            if (!/^[+-]?(?:\d+\.?\d*|\.\d+)(?:[eE][+-]?\d+)?$/.test(token)) return null;
+            const number = Number(token);
+            return Number.isFinite(number) ? number : null;
         }
 
+        /** Llena el campo con datos de ejemplo para probar la aplicación. */
+        function loadSampleData() {
+            document.getElementById('manual-data').value = '12, 15, 18, 18, 20, 21, 23, 23, 24, 25, 27, 30';
+            processManualData();
+        }
+
+        /** Lee los valores del campo manual con reglas claras para los separadores. */
         function processManualData() {
-            const rawText = document.getElementById('manual-data').value;
-            if(!rawText.trim()) {
-                showError("El campo está vacío. Ingresa números separados por comas.");
+            const rawText = document.getElementById('manual-data').value.trim();
+            if (!rawText) {
+                showError('El campo está vacío. Escribe al menos un dato.');
                 return;
             }
-            
-            // Reemplazar saltos de línea por comas y dividir
-            let rawArray = rawText.replace(/\n/g, ',').split(',').map(item => item.trim()).filter(item => item !== "");
-            analyzeRawData(rawArray);
+
+            // Si hay punto y coma, se toma como delimitador principal y se permite
+            // la coma decimal (ejemplo: 12,5; 15,2; 18,0). Sin punto y coma,
+            // las comas separan observaciones y el punto es el decimal habitual.
+            // Para facilitar pegar grandes listas, también detectamos valores
+            // numéricos separados solo por espacios. No dividimos frases cualitativas
+            // por espacios para no destruir categorías como "Muy satisfecho".
+            const decimalCommaMode = rawText.includes(';');
+            const standardDelimiter = decimalCommaMode ? /[;\n\t]+/ : /[,\n\t;]+/;
+            let rawArray = rawText.split(standardDelimiter).map(item => item.trim()).filter(Boolean);
+            const whitespaceTokens = rawText.split(/[\s,;]+/).filter(Boolean);
+            const whitespaceSeparatedNumbers = whitespaceTokens.length > 1 && whitespaceTokens.every(token => parseNumberToken(token) !== null);
+            if (whitespaceSeparatedNumbers && !decimalCommaMode && !/[,;\n\t]/.test(rawText)) {
+                rawArray = whitespaceTokens;
+            }
+            analyzeRawData(rawArray, { source: 'manual' });
         }
 
-        function handleFileUpload(event) {
-            const file = event.target.files[0];
+        /** Normaliza una tabla importada a una sola variable de observaciones. */
+        function normalizeImportedRows(inputRows, sourceName) {
+            let rows = (inputRows || []).map(row => Array.isArray(row) ? row : [row])
+                .map(row => row.map(cell => String(cell ?? '').trim()))
+                .filter(row => row.some(cell => cell !== ''));
+            if (!rows.length) {
+                showError(`El archivo ${sourceName} no contiene datos.`);
+                return null;
+            }
+
+            const headerKeys = new Set([
+                'dato', 'datos', 'valor', 'valores', 'observacion', 'observaciones',
+                'variable', 'medicion', 'medida', 'edad', 'estatura', 'altura',
+                'peso', 'nota', 'calificacion', 'categoria', 'categorias',
+                'sexo', 'satisfaccion', 'data', 'value', 'values', 'observation',
+                'observations', 'category', 'score'
+            ]);
+            const normalizeHeader = value => String(value ?? '').normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+            const firstRowValues = rows[0].filter(cell => cell !== '');
+            const firstLabel = firstRowValues[0] ?? '';
+            const knownHeader = firstRowValues.length === 1 && headerKeys.has(normalizeHeader(firstLabel));
+            const rowsBelowAreSingleNumericCells = rows.length > 1 && rows.slice(1).every(row => {
+                const values = row.filter(cell => cell !== '');
+                return values.length === 1 && parseNumberToken(values[0]) !== null;
+            });
+            const likelyNumericHeader = firstRowValues.length === 1 && parseNumberToken(firstLabel) === null && rowsBelowAreSingleNumericCells;
+            if (knownHeader || likelyNumericHeader) rows.shift();
+            if (!rows.length) {
+                showError(`El archivo ${sourceName} solo contiene un encabezado, sin observaciones.`);
+                return null;
+            }
+
+            // Una sola fila se admite como lista horizontal. En varias filas debe
+            // haber una única columna poblada, para no mezclar variables distintas.
+            if (rows.length === 1) {
+                const values = rows[0].filter(cell => cell !== '');
+                if (!values.length) {
+                    showError(`El archivo ${sourceName} no contiene observaciones válidas.`);
+                    return null;
+                }
+                return values;
+            }
+
+            if (rows.some(row => row.filter(cell => cell !== '').length > 1)) {
+                showError(`El archivo ${sourceName} contiene varias columnas con datos. Para analizar una variable, organiza sus observaciones en una sola columna (un dato por fila) o en una sola fila.`);
+                return null;
+            }
+            const values = rows.map(row => row.find(cell => cell !== '')).filter(value => value !== undefined && value !== '');
+            if (!values.length) {
+                showError(`El archivo ${sourceName} no contiene observaciones válidas.`);
+                return null;
+            }
+            return values;
+        }
+
+        /** Importa CSV o Excel localmente; los archivos no se envían a un servidor. */
+        async function handleFileUpload(event) {
+            const file = event.target.files?.[0];
             if (!file) return;
-
-            document.getElementById('file-name-display').innerText = `Archivo cargado: ${file.name}`;
-
-            Papa.parse(file, {
-                complete: function(results) {
-                    let rawArray = [];
-                    // Extraer los datos (asumiendo que están en la primera columna o fila)
-                    results.data.forEach(row => {
-                        row.forEach(cell => {
-                            if(cell && cell.trim() !== "") rawArray.push(cell.trim());
-                        });
-                    });
-                    
-                    // Remover posible header (si la primera celda no es número y el resto sí)
-                    if(rawArray.length > 1 && isNaN(Number(rawArray[0].replace(',','.'))) && !isNaN(Number(rawArray[1].replace(',','.')))) {
-                        rawArray.shift(); 
-                    }
-                    analyzeRawData(rawArray);
-                },
-                error: function() {
-                    showError("Error al leer el archivo CSV.");
-                }
-            });
-        }
-
-        function analyzeRawData(rawArray) {
-            if(rawArray.length === 0) {
-                showError("No se encontraron datos válidos.");
+            const extension = file.name.toLowerCase().split('.').pop();
+            const isCsv = extension === 'csv';
+            const isExcel = ['xlsx', 'xls'].includes(extension);
+            if (!isCsv && !isExcel) {
+                showError('Selecciona un archivo CSV (.csv) o Excel (.xlsx, .xls).');
+                event.target.value = '';
                 return;
             }
 
-            // Identificar naturaleza (Cuantitativa vs Cualitativa)
-            isQuantitative = true;
-            let parsedData = [];
-            
-            for(let i=0; i<rawArray.length; i++) {
-                // Reemplazar coma por punto decimal para JS
-                let valStr = rawArray[i].replace(',', '.');
-                let num = Number(valStr);
-                if(isNaN(num)) {
-                    isQuantitative = false;
-                    parsedData.push(rawArray[i]); // Mantener string original
+            try {
+                let rows;
+                if (isCsv) {
+                    if (typeof Papa === 'undefined') {
+                        showError('No se pudo cargar PapaParse. Verifica tu conexión a Internet y recarga la página.');
+                        return;
+                    }
+                    const csvText = await file.text();
+                    // CSV de una sola columna exportado con coma decimal: los valores
+                    // como 12,5 en líneas independientes no deben dividirse en dos.
+                    const csvLines = csvText.replace(/^\uFEFF/, '').split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+                    const decimalCommaToken = line => /^[+-]?(?:(?:\d{1,3}(?:\.\d{3})+|\d+),\d+|,\d+)$/.test(line);
+                    const firstLineIsSingleCell = !csvLines[0].includes(',') && !csvLines[0].includes(';') && !csvLines[0].includes('\t');
+                    const decimalCommaColumn = (csvLines.length > 1 && firstLineIsSingleCell &&
+                        csvLines.slice(1).every(decimalCommaToken)) || csvLines.every(decimalCommaToken);
+                    if (decimalCommaColumn) {
+                        rows = csvLines.map(line => [line]);
+                    } else {
+                        rows = await new Promise((resolve, reject) => {
+                            Papa.parse(csvText, {
+                                skipEmptyLines: 'greedy',
+                                delimiter: '',
+                                complete: results => {
+                                    const fatalError = (results.errors || []).find(error => ['Quotes', 'FieldMismatch'].includes(error.code));
+                                    if (fatalError) reject(new Error('No se pudo interpretar el CSV. Revisa sus separadores y comillas.'));
+                                    else resolve(results.data || []);
+                                },
+                                error: error => reject(error)
+                            });
+                        });
+                    }
                 } else {
-                    parsedData.push(num);
+                    if (typeof XLSX === 'undefined') {
+                        showError('No se pudo cargar la biblioteca Excel. Verifica tu conexión a Internet y vuelve a cargar la página.');
+                        return;
+                    }
+                    const buffer = await file.arrayBuffer();
+                    const workbook = XLSX.read(buffer, { type: 'array', cellDates: false });
+                    const firstSheetName = workbook.SheetNames?.[0];
+                    if (!firstSheetName) {
+                        showError('El libro de Excel no contiene hojas para leer.');
+                        return;
+                    }
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    rows = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true, defval: '', blankrows: false });
                 }
+
+                const values = normalizeImportedRows(rows, isCsv ? 'CSV' : 'Excel');
+                if (!values) return;
+                document.getElementById('file-name-display').textContent = `Archivo seleccionado: ${file.name}`;
+                analyzeRawData(values, { source: isCsv ? 'csv' : 'excel' });
+            } catch (error) {
+                console.error('Error al importar datos:', error);
+                showError(error?.message || 'Ocurrió un error al leer el archivo seleccionado.');
+            }
+        }
+
+        /** Normaliza etiquetas para cotejar categorías sin distinguir mayúsculas ni tildes. */
+        function normalizeCategoryLabel(value) {
+            return String(value ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLocaleLowerCase('es');
+        }
+
+        /** Compara observaciones respetando números, jerarquía ordinal o alfabeto según el tipo. */
+        function compareDataValues(a, b) {
+            if (typeof a === 'number' && typeof b === 'number') return a - b;
+            if (isQualitativeOrdinal && ordinalRankMap.size) {
+                const rankA = ordinalRankMap.get(normalizeCategoryLabel(a));
+                const rankB = ordinalRankMap.get(normalizeCategoryLabel(b));
+                if (rankA !== undefined && rankB !== undefined) return rankA - rankB;
+            }
+            return String(a).localeCompare(String(b), 'es', { numeric: true, sensitivity: 'base' });
+        }
+
+        /**
+         * Valida el conjunto, detecta si la variable es cuantitativa o cualitativa,
+         * actualiza el estado global y ejecuta los módulos correspondientes.
+         */
+        function analyzeRawData(rawArray, options = {}) {
+            const cleanedValues = (rawArray || []).map(value => String(value ?? '').trim()).filter(Boolean);
+            if (cleanedValues.length === 0) {
+                showError('No se encontraron datos válidos en la entrada.');
+                return;
             }
 
-            globalData = parsedData;
-
-            // Actualizar UI General
-            document.getElementById('n-count').innerText = globalData.length;
-            document.getElementById('data-badge').classList.remove('hidden');
-            
-            // Habilitar las pestañas una vez existan datos
-            ['btn-dashboard', 'btn-frequencies', 'btn-charts', 'btn-interpretations'].forEach(id => {
-                document.getElementById(id).classList.remove('nav-locked');
+            const parsedValues = cleanedValues.map(value => {
+                const number = parseNumberToken(value);
+                return number === null ? value : number;
             });
+            const allValuesAreNumeric = parsedValues.every(value => typeof value === 'number' && Number.isFinite(value));
+            const requestedType = document.getElementById('variable-type').value;
 
+            // Una selección cuantitativa exige que todos los registros sean números finitos.
+            const explicitQuantitative = ['quantitative', 'quantitative-discrete', 'quantitative-continuous'].includes(requestedType);
+            const explicitQualitative = ['qualitative', 'qualitative-nominal', 'qualitative-ordinal'].includes(requestedType);
+            if (explicitQuantitative && !allValuesAreNumeric) {
+                showError('Elegiste una variable cuantitativa, pero hay valores que no son números. Corrige los datos o selecciona una variable cualitativa.');
+                return;
+            }
+
+            // Las categorías pueden ser etiquetas de texto o códigos numéricos.
+            const containsNumbers = parsedValues.some(value => typeof value === 'number');
+            const containsLabels = parsedValues.some(value => typeof value === 'string');
+            isQuantitative = explicitQuantitative ? true : explicitQualitative ? false : allValuesAreNumeric;
+            isQualitativeOrdinal = !isQuantitative && requestedType === 'qualitative-ordinal';
+            ordinalCategoryOrder = [];
+            ordinalRankMap = new Map();
+            if (isQualitativeOrdinal) {
+                const orderText = document.getElementById('ordinal-order').value.trim();
+                let proposedOrder = orderText
+                    ? orderText.split(/[>؛;\n]+/).map(value => value.trim()).filter(Boolean)
+                    : [];
+                const observedCategories = [...new Set(cleanedValues)];
+                if (!proposedOrder.length && allValuesAreNumeric) {
+                    proposedOrder = [...new Set(parsedValues)].sort((a, b) => a - b).map(String);
+                }
+                if (!proposedOrder.length) {
+                    showError('Para una variable cualitativa ordinal, define el orden de los niveles de menor a mayor. Por ejemplo: Bajo > Medio > Alto.');
+                    return;
+                }
+                const normalizedOrder = proposedOrder.map(normalizeCategoryLabel);
+                if (new Set(normalizedOrder).size !== normalizedOrder.length) {
+                    showError('El orden ordinal contiene niveles repetidos. Escribe cada categoría una sola vez.');
+                    return;
+                }
+                const missingCategories = observedCategories.filter(value => !normalizedOrder.includes(normalizeCategoryLabel(value)));
+                if (missingCategories.length) {
+                    showError(`Faltan niveles observados en el orden ordinal: ${missingCategories.join(', ')}. Incluye todos los niveles separados por >.`);
+                    return;
+                }
+                ordinalCategoryOrder = proposedOrder;
+                ordinalRankMap = new Map(proposedOrder.map((value, index) => [normalizeCategoryLabel(value), index]));
+            }
+            globalData = isQuantitative ? parsedValues : cleanedValues;
+            sortedData = [];
+            organizedAscendingCache = [...globalData].sort(compareDataValues);
+            renderSummaryData();
+            organizedPage = 1;
+            stats = {};
+            frequencyData = [];
+
+            document.getElementById('n-count').textContent = String(globalData.length);
+            document.getElementById('data-badge').classList.remove('hidden');
+            document.getElementById('pop-size').textContent = String(globalData.length);
+            document.getElementById('error-msg').classList.add('hidden');
+
+            document.getElementById('ordinal-order-field').classList.toggle('hidden', !isQualitativeOrdinal);
+            const formulaPanel = document.getElementById('quantitative-formulas');
             if (isQuantitative) {
-                isContinuous = globalData.some(num => num % 1 !== 0);
-                document.getElementById('var-type').innerText = "Cuantitativa";
-                document.getElementById('var-nature').innerText = isContinuous ? "Continua" : "Discreta";
-                
-                // Ejecutar Cálculos Estadísticos (Módulos 3 a 7)
+                isContinuous = requestedType === 'quantitative-continuous'
+                    ? true
+                    : requestedType === 'quantitative-discrete'
+                        ? false
+                        : globalData.some(number => !Number.isInteger(number));
+                document.getElementById('var-type').textContent = 'Cuantitativa';
+                document.getElementById('var-nature').textContent = isContinuous ? 'Continua' : 'Discreta';
+                if (formulaPanel) formulaPanel.classList.remove('hidden');
                 calculateQuantitativeStats();
                 generateFrequencyTable(true);
             } else {
-                document.getElementById('var-type').innerText = "Cualitativa";
-                document.getElementById('var-nature').innerText = "Nominal/Ordinal";
-                // Limpiar dashboard cuantitativo
+                isContinuous = false;
+                document.getElementById('var-type').textContent = 'Cualitativa';
+                document.getElementById('var-nature').textContent = requestedType === 'qualitative-ordinal' ? 'Ordinal' : 'Nominal';
+                if (formulaPanel) formulaPanel.classList.add('hidden');
                 resetDashboard();
                 generateFrequencyTable(false);
             }
-            
-            document.getElementById('pop-size').innerText = globalData.length;
+
             generateInterpretations();
-            
-            // Mostrar resultados
-            if(isQuantitative) switchTab('dashboard');
-            else switchTab('frequencies');
-        }
-
-        function calculateQuantitativeStats() {
-            const N = globalData.length;
-            sortedData = [...globalData].sort((a, b) => a - b);
-            
-            // --- M3. TENDENCIA CENTRAL ---
-            const sum = sortedData.reduce((a, b) => a + b, 0);
-            stats.mean = sum / N;
-
-            // Mediana
-            const mid = Math.floor(N / 2);
-            stats.median = N % 2 !== 0 ? sortedData[mid] : (sortedData[mid - 1] + sortedData[mid]) / 2;
-
-            // Moda
-            const frequencies = {};
-            let maxFreq = 0;
-            sortedData.forEach(v => {
-                frequencies[v] = (frequencies[v] || 0) + 1;
-                if(frequencies[v] > maxFreq) maxFreq = frequencies[v];
-            });
-            const modes = Object.keys(frequencies).filter(k => frequencies[k] === maxFreq).map(Number);
-            stats.mode = modes.length === Object.keys(frequencies).length ? "Amodal" : modes.join(', ');
-
-            // --- M4. MEDIDAS DE POSICIÓN (Cuartiles) ---
-            const getPercentile = (p) => {
-                const pos = (N - 1) * p;
-                const base = Math.floor(pos);
-                const rest = pos - base;
-                if(sortedData[base + 1] !== undefined) {
-                    return sortedData[base] + rest * (sortedData[base + 1] - sortedData[base]);
-                } else {
-                    return sortedData[base];
-                }
-            };
-            stats.q1 = getPercentile(0.25);
-            stats.q2 = getPercentile(0.50); // Igual a mediana
-            stats.q3 = getPercentile(0.75);
-            stats.iqr = stats.q3 - stats.q1;
-
-            // --- M5. DISPERSIÓN ---
-            stats.range = sortedData[N - 1] - sortedData[0];
-            
-            // Varianza poblacional (divido por N, no N-1)
-            let sumSqDiff = 0;
-            let sumCubeDiff = 0;
-            let sumQuadDiff = 0;
-            let sumDiff = 0;
-
-            sortedData.forEach(v => {
-                const diff = v - stats.mean;
-                sumDiff += diff;
-                sumSqDiff += Math.pow(diff, 2);
-                sumCubeDiff += Math.pow(diff, 3);
-                sumQuadDiff += Math.pow(diff, 4);
-            });
-
-            stats.variance = sumSqDiff / N;
-            stats.stdDev = Math.sqrt(stats.variance);
-            stats.cv = (stats.mean === 0) ? 0 : (stats.stdDev / Math.abs(stats.mean)) * 100;
-
-            // --- M7. MOMENTOS ESTADÍSTICOS ---
-            stats.m1 = sumDiff / N; // Debería ser ~0
-            stats.m2 = stats.variance;
-            stats.m3 = sumCubeDiff / N;
-            stats.m4 = sumQuadDiff / N;
-
-            // Coeficientes (Poblacionales)
-            stats.skewness = (stats.stdDev === 0) ? 0 : stats.m3 / Math.pow(stats.stdDev, 3);
-            stats.kurtosis = (stats.stdDev === 0) ? 0 : stats.m4 / Math.pow(stats.stdDev, 4);
-
-            // --- M6. VALORES ATÍPICOS ---
-            stats.lowerLimit = stats.q1 - 1.5 * stats.iqr;
-            stats.upperLimit = stats.q3 + 1.5 * stats.iqr;
-            stats.outliers = sortedData.filter(v => v < stats.lowerLimit || v > stats.upperLimit);
-
-            // ACTUALIZAR UI DASHBOARD
-            document.getElementById('res-mean').innerText = stats.mean.toFixed(4);
-            document.getElementById('res-median').innerText = stats.median.toFixed(4);
-            document.getElementById('res-mode').innerText = stats.mode;
-            
-            document.getElementById('res-q1').innerText = stats.q1.toFixed(4);
-            document.getElementById('res-q2').innerText = stats.q2.toFixed(4);
-            document.getElementById('res-q3').innerText = stats.q3.toFixed(4);
-            document.getElementById('res-iqr').innerText = stats.iqr.toFixed(4);
-
-            document.getElementById('res-range').innerText = stats.range.toFixed(4);
-            document.getElementById('res-variance').innerText = stats.variance.toFixed(4);
-            document.getElementById('res-stddev').innerText = stats.stdDev.toFixed(4);
-            document.getElementById('res-cv').innerText = stats.cv.toFixed(2) + '%';
-
-            document.getElementById('res-m1').innerText = Math.abs(stats.m1) < 1e-10 ? "0" : stats.m1.toFixed(4);
-            document.getElementById('res-m2').innerText = stats.m2.toFixed(4);
-            document.getElementById('res-m3').innerText = stats.m3.toFixed(4);
-            document.getElementById('res-m4').innerText = stats.m4.toFixed(4);
-            
-            document.getElementById('res-skewness').innerText = stats.skewness.toFixed(4);
-            document.getElementById('res-kurtosis').innerText = stats.kurtosis.toFixed(4);
-
-            document.getElementById('res-li').innerText = stats.lowerLimit.toFixed(4);
-            document.getElementById('res-ls').innerText = stats.upperLimit.toFixed(4);
-            
-            const outliersDiv = document.getElementById('res-outliers');
-            if(stats.outliers.length > 0) {
-                outliersDiv.innerText = stats.outliers.join(', ');
-                outliersDiv.classList.add('text-red-600', 'font-bold');
+            renderOrganizedData();
+            switchTab(isQuantitative ? 'dashboard' : 'frequencies');
+            if (requestedType === 'auto' && containsNumbers && containsLabels) {
+                showToast('Se encontraron números y categorías; el conjunto se tratará como una variable cualitativa.');
+            } else if (options.source === 'csv' || options.source === 'excel') {
+                const format = options.source === 'csv' ? 'CSV' : 'Excel';
+                showToast(`Archivo ${format} procesado: ${globalData.length} observaciones.`);
             } else {
-                outliersDiv.innerText = "Ninguno";
-                outliersDiv.classList.remove('text-red-600', 'font-bold');
+                showToast(`Análisis listo: ${globalData.length} observaciones.`);
             }
         }
 
-        function generateFrequencyTable(quantitative) {
-            const tbody = document.getElementById('freq-table-body');
-            tbody.innerHTML = '';
-            frequencyData = [];
-            const N = globalData.length;
+        /**
+         * Muestra el conjunto tal como se ingresó y una copia ascendente.
+         * No altera globalData ni sortedData, por lo que las medidas estadísticas
+         * siguen calculándose exactamente con el conjunto validado original.
+         */
+        function renderSummaryData() {
+            const originalElement = document.getElementById('summary-original-data');
+            const sortedElement = document.getElementById('summary-sorted-data');
+            const originalCount = document.getElementById('summary-original-count');
+            const sortedCount = document.getElementById('summary-sorted-count');
+            const orderTag = document.getElementById('summary-sorted-order-tag');
+            const sortedNote = document.getElementById('summary-sorted-note');
+            if (!originalElement || !sortedElement) return;
 
-            if(!quantitative) {
-                // Cualitativos
-                document.getElementById('sturges-info').classList.add('hidden');
-                document.getElementById('table-description').innerText = "Distribución de Frecuencias (Variable Cualitativa)";
-                
-                const counts = {};
-                globalData.forEach(v => counts[v] = (counts[v] || 0) + 1);
-                
-                let cumulativeFi = 0;
-                let cumulativeHi = 0;
+            const displayValues = values => values.map(value => String(value)).join(', ');
+            originalElement.textContent = displayValues(globalData);
+            const ascendingValues = organizedAscendingCache.length === globalData.length
+                ? organizedAscendingCache
+                : [...globalData].sort(compareDataValues);
+            sortedElement.textContent = displayValues(ascendingValues);
+            if (originalCount) originalCount.textContent = globalData.length.toLocaleString('es-CO');
+            if (sortedCount) sortedCount.textContent = ascendingValues.length.toLocaleString('es-CO');
 
-                for(const [key, fi] of Object.entries(counts)) {
-                    const hi = fi / N;
-                    cumulativeFi += fi;
-                    cumulativeHi += hi;
-                    
-                    frequencyData.push({ label: key, fi: fi });
-
-                    tbody.innerHTML += `
-                        <tr class="hover:bg-blue-50 transition-colors">
-                            <td class="px-6 py-2 font-medium text-gray-900">${key}</td>
-                            <td class="px-6 py-2 text-center">${fi}</td>
-                            <td class="px-6 py-2 text-center bg-gray-50">${cumulativeFi}</td>
-                            <td class="px-6 py-2 text-center">${hi.toFixed(4)}</td>
-                            <td class="px-6 py-2 text-center bg-gray-50">${cumulativeHi.toFixed(4)}</td>
-                            <td class="px-6 py-2 text-center font-semibold text-blue-600">${(hi*100).toFixed(2)}%</td>
-                        </tr>
-                    `;
-                }
+            if (isQuantitative) {
+                if (orderTag) orderTag.textContent = 'ASCENDENTE';
+                if (sortedNote) sortedNote.textContent = 'Orden numérico de menor a mayor.';
+                sortedElement.setAttribute('aria-label', 'Datos numéricos ordenados de menor a mayor');
+            } else if (isQualitativeOrdinal) {
+                if (orderTag) orderTag.textContent = 'ORDINAL';
+                if (sortedNote) sortedNote.textContent = 'Orden de niveles definido según la jerarquía indicada; se conservan las categorías repetidas.';
+                sortedElement.setAttribute('aria-label', 'Categorías ordenadas según la jerarquía ordinal definida');
             } else {
-                // Cuantitativos
-                const uniqueVals = new Set(globalData).size;
-                
-                // Criterio: Si hay más de 10 datos únicos, agrupamos por Regla de Sturges
-                if(uniqueVals > 10) {
-                    document.getElementById('table-description').innerText = "Distribución de Frecuencias para Datos Agrupados (Regla de Sturges)";
-                    
-                    const k = Math.round(1 + 3.322 * Math.log10(N));
-                    const range = stats.range;
-                    const A = range / k;
-
-                    document.getElementById('sturges-info').classList.remove('hidden');
-                    document.getElementById('sturges-k').innerText = k;
-                    document.getElementById('sturges-a').innerText = A.toFixed(4);
-
-                    let minVal = sortedData[0];
-                    let intervals = [];
-                    for(let i=0; i<k; i++) {
-                        let lower = minVal + (i*A);
-                        let upper = lower + A;
-                        intervals.push({lower, upper, mid: (lower+upper)/2, fi: 0});
-                    }
-
-                    // Conteo
-                    sortedData.forEach(v => {
-                        for(let i=0; i<k; i++) {
-                            // El último intervalo incluye el límite superior
-                            if(i === k-1) {
-                                if(v >= intervals[i].lower && v <= intervals[i].upper) {
-                                    intervals[i].fi++;
-                                    break;
-                                }
-                            } else {
-                                if(v >= intervals[i].lower && v < intervals[i].upper) {
-                                    intervals[i].fi++;
-                                    break;
-                                }
-                            }
-                        }
-                    });
-
-                    let cumulativeFi = 0;
-                    let cumulativeHi = 0;
-
-                    intervals.forEach(int => {
-                        const hi = int.fi / N;
-                        cumulativeFi += int.fi;
-                        cumulativeHi += hi;
-                        const label = `[${int.lower.toFixed(2)} - ${int.upper.toFixed(2)}${int === intervals[intervals.length-1]?']':')'}`;
-                        
-                        frequencyData.push({ label: label, mid: int.mid.toFixed(2), fi: int.fi });
-
-                        tbody.innerHTML += `
-                            <tr class="hover:bg-blue-50 transition-colors">
-                                <td class="px-6 py-2 font-medium text-gray-900">${label} <br><span class="text-xs text-gray-400">Marca: ${int.mid.toFixed(2)}</span></td>
-                                <td class="px-6 py-2 text-center">${int.fi}</td>
-                                <td class="px-6 py-2 text-center bg-gray-50">${cumulativeFi}</td>
-                                <td class="px-6 py-2 text-center">${hi.toFixed(4)}</td>
-                                <td class="px-6 py-2 text-center bg-gray-50">${cumulativeHi.toFixed(4)}</td>
-                                <td class="px-6 py-2 text-center font-semibold text-blue-600">${(hi*100).toFixed(2)}%</td>
-                            </tr>
-                        `;
-                    });
-
-                } else {
-                    // Datos no agrupados
-                    document.getElementById('sturges-info').classList.add('hidden');
-                    document.getElementById('table-description').innerText = "Distribución de Frecuencias para Datos No Agrupados";
-                    
-                    const counts = {};
-                    sortedData.forEach(v => counts[v] = (counts[v] || 0) + 1);
-                    
-                    let cumulativeFi = 0;
-                    let cumulativeHi = 0;
-
-                    for(const [key, fi] of Object.entries(counts)) {
-                        const hi = fi / N;
-                        cumulativeFi += fi;
-                        cumulativeHi += hi;
-                        
-                        frequencyData.push({ label: key, fi: fi });
-
-                        tbody.innerHTML += `
-                            <tr class="hover:bg-blue-50 transition-colors">
-                                <td class="px-6 py-2 font-medium text-gray-900">${key}</td>
-                                <td class="px-6 py-2 text-center">${fi}</td>
-                                <td class="px-6 py-2 text-center bg-gray-50">${cumulativeFi}</td>
-                                <td class="px-6 py-2 text-center">${hi.toFixed(4)}</td>
-                                <td class="px-6 py-2 text-center bg-gray-50">${cumulativeHi.toFixed(4)}</td>
-                                <td class="px-6 py-2 text-center font-semibold text-blue-600">${(hi*100).toFixed(2)}%</td>
-                            </tr>
-                        `;
-                    }
-                }
-            }
-
-            document.getElementById('sum-fi').innerText = N;
-        }
-
-        function renderCharts() {
-            const labels = frequencyData.map(d => d.label);
-            const dataFi = frequencyData.map(d => d.fi);
-            
-            const colors = [
-                'rgba(0, 74, 152, 0.7)', 'rgba(253, 185, 19, 0.7)', 'rgba(59, 130, 246, 0.7)',
-                'rgba(16, 185, 129, 0.7)', 'rgba(139, 92, 246, 0.7)', 'rgba(239, 68, 68, 0.7)',
-                'rgba(245, 158, 11, 0.7)', 'rgba(20, 184, 166, 0.7)', 'rgba(236, 72, 153, 0.7)'
-            ];
-
-            // 1. Gráfico de Barras / Histograma
-            const ctxBar = document.getElementById('barChart').getContext('2d');
-            if(chartInstances.bar) chartInstances.bar.destroy();
-            
-            // Si es continuo agrupado, dibujamos sin espacio (Histograma)
-            const isHistogram = isQuantitative && (new Set(globalData).size > 10);
-            
-            chartInstances.bar = new Chart(ctxBar, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Frecuencia Absoluta (fi)',
-                        data: dataFi,
-                        backgroundColor: 'rgba(0, 74, 152, 0.7)',
-                        borderColor: 'rgba(0, 74, 152, 1)',
-                        borderWidth: 1,
-                        barPercentage: isHistogram ? 1.0 : 0.8,
-                        categoryPercentage: isHistogram ? 1.0 : 0.8
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: { y: { beginAtZero: true } },
-                    plugins: { legend: { display: false } }
-                }
-            });
-
-            // 2. Gráfico Circular
-            const ctxPie = document.getElementById('pieChart').getContext('2d');
-            if(chartInstances.pie) chartInstances.pie.destroy();
-            chartInstances.pie = new Chart(ctxPie, {
-                type: 'pie',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        data: dataFi,
-                        backgroundColor: colors.slice(0, labels.length)
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { position: 'right', labels: { boxWidth: 12, font: {size: 10} } }
-                    }
-                }
-            });
-
-            // 3. Diagrama de Caja (Solo si es cuantitativo)
-            const boxContainer = document.querySelector('.boxplot-container');
-            if (chartInstances.box) {
-                chartInstances.box.destroy();
-                chartInstances.box = null;
-            }
-            if (!isQuantitative) {
-                boxContainer.innerHTML = '<div class="text-gray-500 mt-10 text-center"><i class="fa-solid fa-circle-info text-2xl mb-3 block"></i>El diagrama de caja aplica únicamente a variables cuantitativas.</div>';
-            } else {
-                if (!document.getElementById('boxChart')) {
-                    boxContainer.innerHTML = '<canvas id="boxChart"></canvas>';
-                }
-                const ctxBox = document.getElementById('boxChart').getContext('2d');
-                chartInstances.box = new Chart(ctxBox, {
-                    type: 'boxplot',
-                    data: {
-                        labels: ['Distribución de datos'],
-                        datasets: [{
-                            label: 'Datos ingresados',
-                            backgroundColor: 'rgba(139, 92, 246, 0.35)',
-                            borderColor: 'rgba(99, 102, 241, 1)',
-                            borderWidth: 2,
-                            outlierBackgroundColor: '#ef4444',
-                            outlierRadius: 5,
-                            data: [globalData]
-                        }]
-                    },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        indexAxis: 'y'
-                    }
-                });
+                if (orderTag) orderTag.textContent = 'A–Z';
+                if (sortedNote) sortedNote.textContent = 'Orden alfabético ascendente; se conservan las categorías repetidas.';
+                sortedElement.setAttribute('aria-label', 'Categorías ordenadas alfabéticamente de A a Z');
             }
         }
 
-        function generateInterpretations() {
-            const container = document.getElementById('interpretation-content');
-            container.innerHTML = ''; // Limpiar
+        // ---------------------- 3B. Datos organizados ------------------------
+        /**
+         * Devuelve una copia ordenada en el sentido actual. El orden ascendente
+         * se calcula una sola vez por conjunto para no volver a ordenar miles de
+         * observaciones en cada pulsación del buscador.
+         */
+        function getOrganizedValues() {
+            const ascending = organizedAscendingCache.length === globalData.length
+                ? organizedAscendingCache
+                : [...globalData].sort(compareDataValues);
+            return organizedSortDirection === 'asc' ? ascending : [...ascending].reverse();
+        }
 
-            if(!isQuantitative) {
-                container.innerHTML = `
-                    <p>Al tratar con una <b>variable cualitativa</b> (atributos o categorías), las medidas de tendencia central numéricas (como la media) y las medidas de dispersión no son aplicables.</p>
-                    <p>El análisis se centra en las frecuencias. Observando la tabla y los gráficos, podemos determinar qué categoría predomina en la población.</p>
-                `;
+        /** Crea una celda de tabla usando textContent, nunca HTML importado. */
+        function appendOrganizedCell(row, value, className = '') {
+            const cell = document.createElement('td');
+            cell.textContent = String(value);
+            if (className) cell.className = className;
+            row.appendChild(cell);
+            return cell;
+        }
+
+        /** Añade una fila de encabezado accesible a la tabla de datos ordenados. */
+        function setOrganizedHeaders(labels) {
+            const head = document.getElementById('organized-table-head');
+            head.replaceChildren();
+            const row = document.createElement('tr');
+            labels.forEach(label => {
+                const cell = document.createElement('th');
+                cell.scope = 'col';
+                cell.textContent = label;
+                row.appendChild(cell);
+            });
+            head.appendChild(row);
+        }
+
+        /**
+         * Actualiza las métricas, la búsqueda, el contenido paginado y los
+         * controles de la pestaña Datos organizados. Exportar no depende del filtro.
+         */
+        function renderOrganizedData() {
+            const tbody = document.getElementById('organized-table-body');
+            if (!tbody) return;
+            tbody.replaceChildren();
+
+            const total = globalData.length;
+            const uniqueCount = new Set(globalData.map(value => `${typeof value}:${String(value)}`)).size;
+            document.getElementById('organized-total').textContent = total.toLocaleString('es-CO');
+            document.getElementById('organized-unique').textContent = uniqueCount.toLocaleString('es-CO');
+            document.getElementById('organized-kind').textContent = total ? (isQuantitative ? 'Cuantitativa' : 'Cualitativa') : '—';
+            document.getElementById('organized-range-card').classList.toggle('hidden', !isQuantitative);
+            // En cuantitativas reutilizamos el arreglo ya ordenado para evitar
+            // expandir miles de valores como argumentos de Math.min/Math.max.
+            document.getElementById('organized-range').textContent = isQuantitative && sortedData.length
+                ? formatOrganizedNumber(sortedData[sortedData.length - 1] - sortedData[0])
+                : '—';
+
+            if (!total) {
+                setOrganizedHeaders(['Posición', 'Dato ordenado', 'Frecuencia']);
+                const row = document.createElement('tr');
+                const cell = appendOrganizedCell(row, 'Agrega datos para verlos organizados.');
+                cell.colSpan = 3;
+                cell.className = 'organized-empty';
+                tbody.appendChild(row);
+                document.getElementById('organized-result-count').textContent = '0 resultados';
+                document.getElementById('organized-page-info').textContent = 'Página 1 de 1';
+                document.getElementById('organized-prev').disabled = true;
+                document.getElementById('organized-next').disabled = true;
                 return;
             }
 
-            let html = `<p>A continuación se presenta un análisis interpretativo automático del comportamiento de la población estadística (N = ${globalData.length}), basado en los resultados matemáticos calculados:</p>`;
+            const query = document.getElementById('organized-search').value.trim().toLocaleLowerCase('es');
+            const allSorted = getOrganizedValues();
+            const frequencyMap = new Map();
+            globalData.forEach(value => {
+                const key = `${typeof value}:${String(value)}`;
+                frequencyMap.set(key, (frequencyMap.get(key) || 0) + 1);
+            });
 
-            // Tendencia Central
-            html += `<h4 class="font-bold text-lg text-utp-blue mt-4"><i class="fa-solid fa-bullseye mr-1"></i> 1. Comportamiento Central</h4>`;
-            html += `<p>El promedio poblacional (<b>Media</b>) es de <b>${stats.mean.toFixed(2)}</b>. El 50% de los datos se encuentra por debajo de <b>${stats.median.toFixed(2)}</b> (<b>Mediana</b>). `;
-            
-            if(stats.mean > stats.median) {
-                html += `Dado que la Media es mayor que la Mediana, la distribución presenta una cola hacia la derecha (valores altos empujan el promedio).`;
-            } else if (stats.mean < stats.median) {
-                html += `Dado que la Media es menor que la Mediana, la distribución presenta una cola hacia la izquierda.`;
+            let rows;
+            if (organizedView === 'frequency') {
+                const uniqueValues = new Map();
+                allSorted.forEach(value => uniqueValues.set(`${typeof value}:${String(value)}`, value));
+                rows = [...uniqueValues.entries()].map(([key, value]) => ({
+                    value,
+                    count: frequencyMap.get(key) || 0,
+                    key
+                })).filter(item => String(item.value).toLocaleLowerCase('es').includes(query));
+                setOrganizedHeaders(['Valor / categoría', 'Frecuencia absoluta (fi)', 'Frecuencia relativa', 'Porcentaje']);
+                document.getElementById('organized-view-description').textContent = 'Cada valor distinto aparece una sola vez, acompañado de su frecuencia.';
             } else {
-                html += `La Media y la Mediana son iguales, sugiriendo una distribución simétrica perfecta.`;
-            }
-            html += `</p>`;
-
-            // Dispersión
-            html += `<h4 class="font-bold text-lg text-utp-blue mt-4"><i class="fa-solid fa-arrows-left-right mr-1"></i> 2. Variabilidad y Dispersión</h4>`;
-            html += `<p>La variabilidad promedio de los datos respecto a la media (<b>Desviación Estándar poblacional</b>) es de <b>${stats.stdDev.toFixed(2)}</b>. `;
-            
-            html += `El <b>Coeficiente de Variación (CV)</b> es de <b>${stats.cv.toFixed(2)}%</b>. `;
-            if(stats.cv <= 15) html += `<span class="text-green-700 font-semibold">Esto indica que los datos son altamente homogéneos (baja dispersión)</span>, por lo que la media es un representante altamente confiable de la población.`;
-            else if(stats.cv <= 30) html += `<span class="text-yellow-600 font-semibold">Esto indica una dispersión moderada</span>, los datos presentan variabilidad aceptable.`;
-            else html += `<span class="text-red-600 font-semibold">Esto refleja una alta dispersión y heterogeneidad en la población</span>. La media no es muy representativa debido a la alta variabilidad.`;
-            html += `</p>`;
-
-            // Forma (Momentos)
-            html += `<h4 class="font-bold text-lg text-utp-blue mt-4"><i class="fa-solid fa-shapes mr-1"></i> 3. Forma de la Distribución (Basado en Momentos)</h4>`;
-            html += `<p>El <b>Coeficiente de Asimetría (Pearson)</b> es <b>${stats.skewness.toFixed(2)}</b>. `;
-            if(Math.abs(stats.skewness) < 0.2) html += `Al ser cercano a cero, indica que la distribución es prácticamente <b>Simétrica</b>.`;
-            else if(stats.skewness > 0) html += `Al ser positivo, la distribución es <b>Asimétrica Positiva (Sesgada a la derecha)</b>. La mayor concentración de datos está en los valores bajos.`;
-            else html += `Al ser negativo, la distribución es <b>Asimétrica Negativa (Sesgada a la izquierda)</b>. La mayor concentración de datos está en los valores altos.`;
-            html += `</p>`;
-
-            html += `<p class="mt-2">El <b>Coeficiente de Curtosis</b> calculado es <b>${stats.kurtosis.toFixed(2)}</b> (Momento 4 / Desviación Estándar a la 4). `;
-            // Usamos Fisher relacional (kurtosis - 3) para interpretar
-            const fisher = stats.kurtosis - 3;
-            if(Math.abs(fisher) < 0.3) html += `Este valor indica una distribución <b>Mesocúrtica</b> (comportamiento normal en el pico).`;
-            else if(fisher > 0) html += `Al restar 3, obtenemos un valor positivo, indicando una distribución <b>Leptocúrtica</b> (muy apuntada, gran concentración alrededor de la media y colas pesadas).`;
-            else html += `Al restar 3, obtenemos un valor negativo, indicando una distribución <b>Platicúrtica</b> (aplanada, los datos están muy dispersos y no hay un pico marcado).`;
-            html += `</p>`;
-
-            // Atípicos
-            html += `<h4 class="font-bold text-lg text-utp-blue mt-4"><i class="fa-solid fa-triangle-exclamation mr-1"></i> 4. Valores Atípicos</h4>`;
-            if(stats.outliers.length === 0) {
-                html += `<p>Tras aplicar el criterio del Rango Intercuartílico, <b>no se encontraron valores atípicos</b> poblacionales. Todos los datos están dentro de los límites normales [${stats.lowerLimit.toFixed(2)} , ${stats.upperLimit.toFixed(2)}].</p>`;
-            } else {
-                html += `<p>Se han identificado <b>${stats.outliers.length} valores atípicos</b> que se escapan del límite normal superior (${stats.upperLimit.toFixed(2)}) o inferior (${stats.lowerLimit.toFixed(2)}). Estos valores pueden distorsionar fuertemente medidas como la media y la varianza.</p>`;
+                rows = allSorted.map((value, index) => ({
+                    value,
+                    originalSortedIndex: index + 1,
+                    count: frequencyMap.get(`${typeof value}:${String(value)}`) || 0
+                })).filter(item => String(item.value).toLocaleLowerCase('es').includes(query));
+                setOrganizedHeaders(['Posición ordenada', 'Dato', 'Veces que aparece']);
+                document.getElementById('organized-view-description').textContent = organizedSortDirection === 'asc'
+                    ? (isQuantitative ? 'Todas las observaciones, ordenadas de menor a mayor.' : isQualitativeOrdinal ? 'Niveles en el orden ordinal definido, de menor a mayor.' : 'Categorías en orden alfabético ascendente, con orden natural para números en texto.')
+                    : (isQuantitative ? 'Todas las observaciones, ordenadas de mayor a menor.' : isQualitativeOrdinal ? 'Niveles en el orden ordinal definido, de mayor a menor.' : 'Categorías en orden alfabético descendente, con orden natural para números en texto.');
             }
 
-            container.innerHTML = html;
+            const pageSize = Number(document.getElementById('organized-page-size').value) || 50;
+            const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+            organizedPage = Math.min(Math.max(organizedPage, 1), pageCount);
+            const start = (organizedPage - 1) * pageSize;
+            const visibleRows = rows.slice(start, start + pageSize);
+
+            if (visibleRows.length === 0) {
+                const row = document.createElement('tr');
+                const cell = appendOrganizedCell(row, 'No hay resultados para esta búsqueda. Prueba con otro término.');
+                cell.colSpan = organizedView === 'frequency' ? 4 : 3;
+                cell.className = 'organized-empty';
+                tbody.appendChild(row);
+            } else {
+                visibleRows.forEach((item, index) => {
+                    const row = document.createElement('tr');
+                    if (organizedView === 'frequency') {
+                        appendOrganizedCell(row, item.value, 'value-cell');
+                        appendOrganizedCell(row, item.count.toLocaleString('es-CO'));
+                        appendOrganizedCell(row, (item.count / total).toFixed(4));
+                        appendOrganizedCell(row, `${((item.count / total) * 100).toFixed(2)}%`);
+                    } else {
+                        appendOrganizedCell(row, item.originalSortedIndex.toLocaleString('es-CO'));
+                        appendOrganizedCell(row, item.value, 'value-cell');
+                        appendOrganizedCell(row, item.count.toLocaleString('es-CO'));
+                    }
+                    tbody.appendChild(row);
+                });
+            }
+
+            const shownStart = rows.length ? start + 1 : 0;
+            const shownEnd = Math.min(start + pageSize, rows.length);
+            document.getElementById('organized-result-count').textContent = `${rows.length.toLocaleString('es-CO')} resultado(s)`;
+            document.getElementById('organized-page-info').textContent = `${shownStart.toLocaleString('es-CO')}–${shownEnd.toLocaleString('es-CO')} de ${rows.length.toLocaleString('es-CO')} · Página ${organizedPage} de ${pageCount}`;
+            document.getElementById('organized-prev').disabled = organizedPage <= 1;
+            document.getElementById('organized-next').disabled = organizedPage >= pageCount;
         }
 
-        function resetDashboard() {
-            // Reiniciar UI cuando es cualitativa
-            const emptyStr = "-";
-            const elements = ['res-mean', 'res-median', 'res-mode', 'res-q1', 'res-q2', 'res-q3', 'res-iqr', 'res-range', 'res-variance', 'res-stddev', 'res-cv', 'res-m1', 'res-m2', 'res-m3', 'res-m4', 'res-skewness', 'res-kurtosis', 'res-li', 'res-ls', 'res-outliers'];
-            elements.forEach(id => {
-                if(document.getElementById(id)) document.getElementById(id).innerText = emptyStr;
+        /** Da formato compacto a las métricas auxiliares de la pestaña. */
+        function formatOrganizedNumber(value) {
+            return Number.isFinite(value) ? value.toLocaleString('es-CO', { maximumFractionDigits: 4 }) : '—';
+        }
+
+        /** Alterna entre orden ascendente y descendente. */
+        function toggleOrganizedSort() {
+            organizedSortDirection = organizedSortDirection === 'asc' ? 'desc' : 'asc';
+            organizedPage = 1;
+            updateOrganizedSortButton();
+            renderOrganizedData();
+        }
+
+        /** Mantiene el texto del botón de orden sincronizado con el sentido actual. */
+        function updateOrganizedSortButton() {
+            const button = document.getElementById('organized-sort-button');
+            if (!button) return;
+            const ascending = organizedSortDirection === 'asc';
+            button.innerHTML = ascending
+                ? '<i class="fa-solid fa-arrow-down-short-wide"></i><span>Orden ascendente</span>'
+                : '<i class="fa-solid fa-arrow-up-wide-short"></i><span>Orden descendente</span>';
+            button.title = ascending ? 'Cambiar a orden descendente' : 'Cambiar a orden ascendente';
+        }
+
+        /** Alterna entre el listado completo ordenado y la tabla de frecuencias simple. */
+        function setOrganizedView(view) {
+            if (!['observations', 'frequency'].includes(view)) return;
+            organizedView = view;
+            organizedPage = 1;
+            document.getElementById('organized-view-observations').classList.toggle('is-selected', view === 'observations');
+            document.getElementById('organized-view-frequency').classList.toggle('is-selected', view === 'frequency');
+            renderOrganizedData();
+        }
+
+        /** Avanza o retrocede la página de la tabla de datos organizados. */
+        function changeOrganizedPage(delta) {
+            organizedPage += delta;
+            renderOrganizedData();
+        }
+
+        /** Descarga el conjunto organizado completo, no solo la página visible. */
+        function downloadOrganizedCsv() {
+            if (!globalData.length) {
+                showToast('Primero agrega datos para poder exportarlos.');
+                return;
+            }
+            // Evita que valores categóricos que comienzan con símbolos de fórmula
+            // se ejecuten al abrir el CSV en una hoja de cálculo. Los números reales
+            // (incluidos negativos) conservan su formato numérico.
+            const safeCsvValue = value => (typeof value === 'string' && /^[=+\-@\t\r]/.test(value)) ? `'${value}` : value;
+            const csvEscape = value => `"${String(safeCsvValue(value)).replace(/"/g, '""')}"`;
+            const rows = [];
+            if (organizedView === 'frequency') {
+                const counts = new Map();
+                globalData.forEach(value => {
+                    const key = `${typeof value}:${String(value)}`;
+                    counts.set(key, { value, count: (counts.get(key)?.count || 0) + 1 });
+                });
+                const values = [...counts.values()].sort((a, b) => {
+                    const comparison = compareDataValues(a.value, b.value);
+                    return organizedSortDirection === 'asc' ? comparison : -comparison;
+                });
+                rows.push(['Valor / categoría', 'Frecuencia absoluta (fi)', 'Frecuencia relativa', 'Porcentaje']);
+                values.forEach(item => rows.push([item.value, item.count, (item.count / globalData.length).toFixed(6), `${((item.count / globalData.length) * 100).toFixed(2)}%`]));
+            } else {
+                rows.push(['Posición ordenada', 'Dato', 'Veces que aparece']);
+                const values = getOrganizedValues();
+                const counts = new Map();
+                globalData.forEach(value => {
+                    const key = `${typeof value}:${String(value)}`;
+                    counts.set(key, (counts.get(key) || 0) + 1);
+                });
+                values.forEach((value, index) => rows.push([index + 1, value, counts.get(`${typeof value}:${String(value)}`) || 0]));
+            }
+            const csv = '\uFEFF' + rows.map(row => row.map(csvEscape).join(';')).join('\r\n');
+            downloadTextFile(csv, 'statlab-datos-organizados.csv', 'text/csv;charset=utf-8;');
+            showToast('Se descargó el archivo CSV con el conjunto completo.');
+        }
+
+        /** Copia todos los datos en orden para pegarlos fácilmente en otra app. */
+        async function copyOrganizedData() {
+            if (!globalData.length) {
+                showToast('Primero agrega datos para poder copiarlos.');
+                return;
+            }
+            const text = getOrganizedValues().map(value => String(value)).join('\n');
+            try {
+                if (navigator.clipboard && window.isSecureContext) {
+                    await navigator.clipboard.writeText(text);
+                } else {
+                    const temporary = document.createElement('textarea');
+                    temporary.value = text;
+                    temporary.style.position = 'fixed';
+                    temporary.style.opacity = '0';
+                    document.body.appendChild(temporary);
+                    temporary.select();
+                    const copied = document.execCommand('copy');
+                    temporary.remove();
+                    if (!copied) throw new Error('El navegador bloqueó la copia.');
+                }
+                showToast('Datos ordenados copiados al portapapeles.');
+            } catch (error) {
+                showToast('No se pudo copiar automáticamente. Usa Exportar CSV para guardar los datos.');
+            }
+        }
+
+        /** Descarga texto como archivo sin enviar los datos a ningún servidor. */
+        function downloadTextFile(content, filename, mimeType = 'text/plain;charset=utf-8;') {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            // Se da tiempo al navegador para iniciar la descarga antes de liberar la URL.
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+        }
+
+        // Mostrar el campo de jerarquía solo cuando la variable sea cualitativa ordinal.
+        document.getElementById('variable-type').addEventListener('change', event => {
+            document.getElementById('ordinal-order-field').classList.toggle('hidden', event.target.value !== 'qualitative-ordinal');
+        });
+
+        // La zona de carga también admite arrastrar y soltar archivos.
+        const uploadZone = document.querySelector('label[for="dropzone-file"]');
+        const uploadInput = document.getElementById('dropzone-file');
+        if (uploadZone && uploadInput) {
+            uploadZone.addEventListener('dragover', event => {
+                event.preventDefault();
+                uploadZone.classList.add('ring-2', 'ring-emerald-300');
+            });
+            uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('ring-2', 'ring-emerald-300'));
+            uploadZone.addEventListener('drop', event => {
+                event.preventDefault();
+                uploadZone.classList.remove('ring-2', 'ring-emerald-300');
+                const droppedFile = event.dataTransfer?.files?.[0];
+                if (!droppedFile) return;
+                const transfer = new DataTransfer();
+                transfer.items.add(droppedFile);
+                uploadInput.files = transfer.files;
+                handleFileUpload({ target: uploadInput });
             });
         }
+
+        // Los eventos del filtro y tamaño de página se registran una sola vez.
+        document.getElementById('organized-search').addEventListener('input', () => {
+            organizedPage = 1;
+            renderOrganizedData();
+        });
+        document.getElementById('organized-page-size').addEventListener('change', () => {
+            organizedPage = 1;
+            renderOrganizedData();
+        });
+
+        // --------------------- 4. Cálculo de estadísticas --------------------
+        // La función de cálculo se mantiene separada de la interfaz para que las
+        // fórmulas se puedan revisar y probar con conjuntos de datos controlados.
+        /** Calcula medidas para una variable cuantitativa poblacional. */
+        function calculateQuantitativeStats() {
+            const N = globalData.length;
+            if (N === 0) return;
+            sortedData = [...globalData].sort((a, b) => a - b);
+
+            // Tendencia central: media aritmética y mediana de los datos ordenados.
+            const sum = sortedData.reduce((accumulator, value) => accumulator + value, 0);
+            stats.mean = sum / N;
+            const middle = Math.floor(N / 2);
+            stats.median = N % 2 === 1
+                ? sortedData[middle]
+                : (sortedData[middle - 1] + sortedData[middle]) / 2;
+
+            // Moda: puede ser unimodal, multimodal o amodal. Un conjunto con
+            // todos sus datos iguales SÍ tiene moda; amodal significa que cada
+            // observación aparece una sola vez.
+            const valueCounts = new Map();
+            sortedData.forEach(value => valueCounts.set(value, (valueCounts.get(value) || 0) + 1));
+            const maximumFrequency = [...valueCounts.values()].reduce((maximum, count) => Math.max(maximum, count), 0);
+            const modes = [...valueCounts.entries()]
+                .filter(([, count]) => count === maximumFrequency)
+                .map(([value]) => value);
+            stats.mode = modeLabelFromFrequency(maximumFrequency, modes);
+
+            // Cuartiles por interpolación lineal (posición p * (N - 1)).
+            const percentile = p => {
+                const position = (N - 1) * p;
+                const lowerIndex = Math.floor(position);
+                const fraction = position - lowerIndex;
+                const lowerValue = sortedData[lowerIndex];
+                const upperValue = sortedData[lowerIndex + 1];
+                return upperValue === undefined
+                    ? lowerValue
+                    : lowerValue + fraction * (upperValue - lowerValue);
+            };
+            stats.q1 = percentile(0.25);
+            stats.q2 = percentile(0.50);
+            stats.q3 = percentile(0.75);
+            stats.iqr = stats.q3 - stats.q1;
+
+            // Dispersión poblacional. La varianza se divide por N, no por N - 1.
+            stats.range = sortedData[N - 1] - sortedData[0];
+            let sumSquaredDeviations = 0;
+            let sumCubedDeviations = 0;
+            let sumFourthPowerDeviations = 0;
+            let sumDeviations = 0;
+            sortedData.forEach(value => {
+                const deviation = value - stats.mean;
+                sumDeviations += deviation;
+                sumSquaredDeviations += deviation ** 2;
+                sumCubedDeviations += deviation ** 3;
+                sumFourthPowerDeviations += deviation ** 4;
+            });
+
+            stats.variance = sumSquaredDeviations / N;
+            stats.stdDev = Math.sqrt(stats.variance);
+            // El CV no está definido si la media es 0; no se presenta falsamente como 0%.
+            stats.cv = stats.mean === 0 ? null : (stats.stdDev / Math.abs(stats.mean)) * 100;
+
+            // Momentos centrales: m1≈0, m2=varianza, m3 y m4 describen la forma.
+            stats.m1 = sumDeviations / N;
+            stats.m2 = stats.variance;
+            stats.m3 = sumCubedDeviations / N;
+            stats.m4 = sumFourthPowerDeviations / N;
+
+            // Asimetría y curtosis estandarizadas son indefinidas si no hay variación.
+            stats.skewness = stats.stdDev === 0 ? null : stats.m3 / (stats.stdDev ** 3);
+            stats.kurtosis = stats.stdDev === 0 ? null : stats.m4 / (stats.stdDev ** 4);
+
+            // Regla de Tukey: valores fuera de Q1 - 1.5·RIC o Q3 + 1.5·RIC.
+            stats.lowerLimit = stats.q1 - 1.5 * stats.iqr;
+            stats.upperLimit = stats.q3 + 1.5 * stats.iqr;
+            stats.outliers = sortedData.filter(value => value < stats.lowerLimit || value > stats.upperLimit);
+
+            // Presenta las medidas con cuatro decimales para facilitar la lectura.
+            const display = (value, digits = 4) => Number.isFinite(value) ? value.toFixed(digits) : 'No definido';
+            document.getElementById('res-mean').textContent = display(stats.mean);
+            document.getElementById('res-median').textContent = display(stats.median);
+            document.getElementById('res-mode').textContent = stats.mode;
+            document.getElementById('res-q1').textContent = display(stats.q1);
+            document.getElementById('res-q2').textContent = display(stats.q2);
+            document.getElementById('res-q3').textContent = display(stats.q3);
+            document.getElementById('res-iqr').textContent = display(stats.iqr);
+            document.getElementById('res-range').textContent = display(stats.range);
+            document.getElementById('res-variance').textContent = display(stats.variance);
+            document.getElementById('res-stddev').textContent = display(stats.stdDev);
+            document.getElementById('res-cv').textContent = stats.cv === null ? 'No definido (media = 0)' : `${stats.cv.toFixed(2)}%`;
+            document.getElementById('res-m1').textContent = Math.abs(stats.m1) < 1e-10 ? '0' : display(stats.m1);
+            document.getElementById('res-m2').textContent = display(stats.m2);
+            document.getElementById('res-m3').textContent = display(stats.m3);
+            document.getElementById('res-m4').textContent = display(stats.m4);
+            document.getElementById('res-skewness').textContent = stats.skewness === null ? 'No definido' : display(stats.skewness);
+            document.getElementById('res-kurtosis').textContent = stats.kurtosis === null ? 'No definido' : display(stats.kurtosis);
+            document.getElementById('res-li').textContent = display(stats.lowerLimit);
+            document.getElementById('res-ls').textContent = display(stats.upperLimit);
+
+            const outliersElement = document.getElementById('res-outliers');
+            outliersElement.textContent = stats.outliers.length ? stats.outliers.join(', ') : 'Ninguno';
+            outliersElement.classList.toggle('text-red-600', stats.outliers.length > 0);
+            outliersElement.classList.toggle('font-bold', stats.outliers.length > 0);
+        }
+
+        /** Devuelve la etiqueta de la moda según su frecuencia máxima. */
+        function modeLabelFromFrequency(maximumFrequency, modes) {
+            if (maximumFrequency === 1) return 'Amodal';
+            return modes.join(', ');
+        }
+
+        /**
+         * Genera la tabla de frecuencias para ambos tipos de variable.
+         * Para variables cuantitativas con más de 10 valores distintos aplica
+         * la regla de Sturges y agrupa los datos en intervalos.
+         */
+        function generateFrequencyTable(quantitative) {
+            const tbody = document.getElementById('freq-table-body');
+            tbody.replaceChildren();
+            frequencyData = [];
+            const N = globalData.length;
+            if (N === 0) return;
+
+            const sturgesInfo = document.getElementById('sturges-info');
+            sturgesInfo.classList.add('hidden');
+
+            let entries = [];
+            if (!quantitative) {
+                document.getElementById('table-description').textContent = 'Distribución de frecuencias para una variable cualitativa.';
+                const counts = new Map();
+                globalData.forEach(value => {
+                    const label = String(value);
+                    counts.set(label, (counts.get(label) || 0) + 1);
+                });
+                entries = [...counts.entries()].map(([label, fi]) => ({ label, fi, midpoint: null }));
+            } else {
+                const uniqueValues = new Set(globalData).size;
+                if (uniqueValues > 10) {
+                    // Regla de Sturges: k ≈ 1 + 3.322·log10(N).
+                    const k = Math.max(1, Math.round(1 + 3.322 * Math.log10(N)));
+                    const minimum = sortedData[0];
+                    const maximum = sortedData[N - 1];
+                    const amplitude = (maximum - minimum) / k;
+                    document.getElementById('table-description').textContent = 'Distribución de frecuencias agrupadas (regla de Sturges).';
+                    sturgesInfo.classList.remove('hidden');
+                    document.getElementById('sturges-k').textContent = String(k);
+                    document.getElementById('sturges-a').textContent = amplitude.toFixed(4);
+
+                    const intervals = Array.from({ length: k }, (_, index) => ({
+                        lower: minimum + index * amplitude,
+                        upper: index === k - 1 ? maximum : minimum + (index + 1) * amplitude,
+                        midpoint: minimum + (index + 0.5) * amplitude,
+                        fi: 0
+                    }));
+
+                    // La división directa por amplitud evita buscar cada dato en
+                    // todos los intervalos. El máximo se asigna al último intervalo.
+                    sortedData.forEach(value => {
+                        let index = amplitude === 0 ? 0 : Math.floor((value - minimum) / amplitude);
+                        index = Math.max(0, Math.min(k - 1, index));
+                        intervals[index].fi += 1;
+                    });
+
+                    entries = intervals.map((interval, index) => ({
+                        label: `[${Number(interval.lower.toPrecision(7)).toLocaleString('es-CO', { maximumSignificantDigits: 7 })} – ${Number(interval.upper.toPrecision(7)).toLocaleString('es-CO', { maximumSignificantDigits: 7 })}${index === intervals.length - 1 ? ']' : ')'}`,
+                        fi: interval.fi,
+                        midpoint: interval.midpoint
+                    }));
+                } else {
+                    document.getElementById('table-description').textContent = 'Distribución de frecuencias para datos no agrupados.';
+                    const counts = new Map();
+                    sortedData.forEach(value => counts.set(value, (counts.get(value) || 0) + 1));
+                    entries = [...counts.entries()].map(([label, fi]) => ({ label: String(label), fi, midpoint: null }));
+                }
+            }
+
+            // Construcción segura: todo valor procedente del archivo se inserta con
+            // textContent, nunca como HTML, para evitar que etiquetas maliciosas se ejecuten.
+            let cumulativeFi = 0;
+            let cumulativeHi = 0;
+            entries.forEach(entry => {
+                const hi = entry.fi / N;
+                cumulativeFi += entry.fi;
+                cumulativeHi += hi;
+                frequencyData.push({
+                    label: String(entry.label), midpoint: entry.midpoint,
+                    fi: entry.fi, cumulativeFi, hi, cumulativeHi, percentage: hi * 100
+                });
+                appendFrequencyRow({
+                    label: entry.label,
+                    midpoint: entry.midpoint,
+                    fi: entry.fi,
+                    cumulativeFi,
+                    hi,
+                    cumulativeHi
+                });
+            });
+
+            document.getElementById('sum-fi').textContent = String(N);
+            document.getElementById('sum-hi').textContent = cumulativeHi.toFixed(3);
+        }
+
+        /** Añade una fila de frecuencia creando elementos DOM de forma segura. */
+        function appendFrequencyRow({ label, midpoint, fi, cumulativeFi, hi, cumulativeHi }) {
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-blue-50 transition-colors';
+
+            const firstCell = document.createElement('td');
+            firstCell.className = 'px-6 py-3 font-medium text-gray-900';
+            firstCell.textContent = String(label);
+            if (midpoint !== null && midpoint !== undefined) {
+                const sublabel = document.createElement('span');
+                sublabel.className = 'block text-xs text-gray-400 mt-1';
+                sublabel.textContent = `Marca de clase: ${Number(midpoint).toFixed(2)}`;
+                firstCell.appendChild(sublabel);
+            }
+            row.appendChild(firstCell);
+
+            const cells = [
+                { value: String(fi), className: 'px-6 py-3 text-center' },
+                { value: String(cumulativeFi), className: 'px-6 py-3 text-center bg-gray-50' },
+                { value: hi.toFixed(4), className: 'px-6 py-3 text-center' },
+                { value: cumulativeHi.toFixed(4), className: 'px-6 py-3 text-center bg-gray-50' },
+                { value: `${(hi * 100).toFixed(2)}%`, className: 'px-6 py-3 text-center font-semibold text-indigo-600' }
+            ];
+            cells.forEach(item => {
+                const cell = document.createElement('td');
+                cell.className = item.className;
+                cell.textContent = item.value;
+                row.appendChild(cell);
+            });
+            document.getElementById('freq-table-body').appendChild(row);
+        }
+
+        /** Exporta la tabla que se está viendo como CSV compatible con Excel. */
+        function downloadFrequencyCsv() {
+            if (!frequencyData.length) {
+                showToast('Primero genera una tabla de frecuencias para poder exportarla.');
+                return;
+            }
+            const headers = ['Clase o valor', 'Marca de clase', 'Frecuencia absoluta (fi)', 'Frecuencia acumulada (Fi)', 'Frecuencia relativa (hi)', 'Frecuencia relativa acumulada (Hi)', 'Porcentaje'];
+            const rows = frequencyData.map(item => [
+                // Neutraliza etiquetas categóricas que Excel puede interpretar
+                // como una fórmula al abrir el CSV. Los datos numéricos negativos
+                // siguen conservando su signo porque se identifican como números.
+                (!isQuantitative && /^[=+\-@\t\r]/.test(String(item.label))) ? `'${item.label}` : item.label,
+                item.midpoint === null || item.midpoint === undefined ? '' : Number(item.midpoint).toFixed(4),
+                item.fi,
+                item.cumulativeFi,
+                item.hi.toFixed(6),
+                item.cumulativeHi.toFixed(6),
+                item.percentage.toFixed(2) + '%'
+            ]);
+            // Delimitador punto y coma y BOM UTF-8: suele abrir correctamente en Excel
+            // configurado con español y conserva acentos y valores entrecomillados.
+            const escapeCsv = value => `"${String(value ?? '').replace(/"/g, '""')}"`;
+            const csv = '\uFEFF' + [headers, ...rows].map(row => row.map(escapeCsv).join(';')).join('\r\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'statlab-tabla-frecuencias.csv';
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            // Se revoca la URL después de que el navegador haya iniciado la descarga.
+            setTimeout(() => URL.revokeObjectURL(url), 1000);
+            showToast('La tabla de frecuencias se descargó en CSV.');
+        }
+
+        /** Renderiza las tres visualizaciones y destruye versiones anteriores. */
+        function renderCharts() {
+            if (typeof Chart === 'undefined') {
+                showToast('No se cargó Chart.js. Revisa tu conexión; los cálculos y las tablas pueden seguir disponibles.');
+                return;
+            }
+            if (!frequencyData.length) return;
+
+            // Destruir instancias previas impide superponer lienzos al cambiar de pestaña.
+            Object.keys(chartInstances).forEach(key => {
+                if (chartInstances[key]) chartInstances[key].destroy();
+                chartInstances[key] = null;
+            });
+
+            const labels = frequencyData.map(item => item.label);
+            const absoluteFrequencies = frequencyData.map(item => item.fi);
+            const palette = [
+                '#4f46e5', '#14b8a6', '#f59e0b', '#ec4899', '#3b82f6',
+                '#8b5cf6', '#ef4444', '#0d9488', '#f97316', '#6366f1',
+                '#84cc16', '#d946ef'
+            ];
+            const colors = labels.map((_, index) => palette[index % palette.length]);
+            const isHistogram = isQuantitative && new Set(globalData).size > 10;
+            const sharedOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: { duration: 350 },
+                plugins: {
+                    legend: { labels: { color: '#626b88', usePointStyle: true, boxWidth: 8, padding: 14 } },
+                    tooltip: { displayColors: true }
+                }
+            };
+
+            // 1. Barras o histograma (en datos agrupados las barras se tocan).
+            const barCanvas = document.getElementById('barChart');
+            chartInstances.bar = new Chart(barCanvas.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Frecuencia absoluta (fi)',
+                        data: absoluteFrequencies,
+                        backgroundColor: colors.map(color => `${color}cc`),
+                        borderColor: colors,
+                        borderWidth: 1,
+                        borderRadius: isHistogram ? 0 : 7,
+                        barPercentage: isHistogram ? 1 : 0.78,
+                        categoryPercentage: isHistogram ? 1 : 0.82
+                    }]
+                },
+                options: {
+                    ...sharedOptions,
+                    plugins: { ...sharedOptions.plugins, legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#78809a', maxRotation: 45, minRotation: 0 }, grid: { display: false } },
+                        y: { beginAtZero: true, ticks: { precision: 0, color: '#78809a' }, grid: { color: '#edf0f7' } }
+                    }
+                }
+            });
+
+            // 2. Gráfico circular: los colores se repiten de forma predecible si
+            // hay más categorías que tonos definidos en la paleta.
+            chartInstances.pie = new Chart(document.getElementById('pieChart').getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels,
+                    datasets: [{ data: absoluteFrequencies, backgroundColor: colors, borderColor: '#ffffff', borderWidth: 2, hoverOffset: 7 }]
+                },
+                options: {
+                    ...sharedOptions,
+                    cutout: '48%',
+                    plugins: { ...sharedOptions.plugins, legend: { position: 'right', labels: { color: '#626b88', boxWidth: 10, padding: 12, font: { size: 10 } } } }
+                }
+            });
+
+            // 3. Polígono de frecuencias: permite inspeccionar la forma de la distribución.
+            const distributionContainer = document.getElementById('distribution-container');
+            const shapeSummary = document.getElementById('distribution-shape-summary');
+            if (!isQuantitative) {
+                distributionContainer.replaceChildren();
+                const message = document.createElement('div');
+                message.className = 'text-gray-500 mt-10 text-center';
+                message.textContent = 'El polígono de frecuencias y el análisis de asimetría aplican a variables cuantitativas.';
+                distributionContainer.appendChild(message);
+                if (shapeSummary) shapeSummary.textContent = 'Para variables cualitativas, utiliza los gráficos de barras y circular para comparar las frecuencias por categoría.';
+            } else {
+                if (!document.getElementById('distributionChart')) {
+                    distributionContainer.replaceChildren();
+                    const canvas = document.createElement('canvas');
+                    canvas.id = 'distributionChart';
+                    canvas.setAttribute('role', 'img');
+                    canvas.setAttribute('aria-label', 'Polígono de frecuencias para visualizar la forma de la distribución');
+                    distributionContainer.appendChild(canvas);
+                }
+                const distributionLabels = frequencyData.map(item => item.midpoint !== null && item.midpoint !== undefined
+                    ? Number(item.midpoint).toLocaleString('es-CO', { maximumFractionDigits: 3 })
+                    : item.label);
+                chartInstances.distribution = new Chart(document.getElementById('distributionChart').getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: distributionLabels,
+                        datasets: [{
+                            label: 'Frecuencia absoluta (fi)',
+                            data: frequencyData.map(item => item.fi),
+                            borderColor: '#4f46e5',
+                            backgroundColor: 'rgba(79,70,229,0.12)',
+                            borderWidth: 2.5,
+                            pointRadius: 3.5,
+                            pointHoverRadius: 6,
+                            tension: 0.18,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        ...sharedOptions,
+                        plugins: { ...sharedOptions.plugins, legend: { display: false } },
+                        scales: {
+                            x: { title: { display: true, text: 'Valor / marca de clase', color: '#626b88' }, ticks: { color: '#78809a', maxRotation: 45, minRotation: 0 }, grid: { display: false } },
+                            y: { beginAtZero: true, title: { display: true, text: 'Frecuencia absoluta', color: '#626b88' }, ticks: { precision: 0, color: '#78809a' }, grid: { color: '#edf0f7' } }
+                        }
+                    }
+                });
+                if (shapeSummary) {
+                    if (stats.skewness === null) {
+                        shapeSummary.textContent = 'La desviación estándar es cero; todos los valores son iguales y la asimetría no está definida.';
+                    } else if (Math.abs(stats.skewness) < 0.2) {
+                        shapeSummary.textContent = `Asimetría ${stats.skewness.toFixed(4)}: cercana a cero según este indicador. La forma debe confirmarse observando el polígono y el contexto de los datos.`;
+                    } else if (stats.skewness > 0) {
+                        shapeSummary.textContent = `Asimetría positiva (${stats.skewness.toFixed(4)}): sugiere una cola hacia valores altos. Verifica esta tendencia en el polígono de frecuencias.`;
+                    } else {
+                        shapeSummary.textContent = `Asimetría negativa (${stats.skewness.toFixed(4)}): sugiere una cola hacia valores bajos. Verifica esta tendencia en el polígono de frecuencias.`;
+                    }
+                }
+            }
+
+            // 4. Diagrama de caja con los mismos cuartiles, límites y atípicos del resumen.
+            const boxContainer = document.getElementById('boxplot-container');
+            if (!isQuantitative) {
+                boxContainer.replaceChildren();
+                const message = document.createElement('div');
+                message.className = 'text-gray-500 mt-10 text-center';
+                message.textContent = 'El diagrama de caja aplica únicamente a variables cuantitativas.';
+                boxContainer.appendChild(message);
+                return;
+            }
+
+            if (!document.getElementById('boxChart')) {
+                boxContainer.replaceChildren();
+                const canvas = document.createElement('canvas');
+                canvas.id = 'boxChart';
+                canvas.setAttribute('aria-label', 'Diagrama de caja y bigotes');
+                boxContainer.appendChild(canvas);
+            }
+
+            const hasBoxplotController = Boolean(Chart.registry?.controllers?.get('boxplot'));
+            if (!hasBoxplotController) {
+                boxContainer.replaceChildren();
+                const message = document.createElement('div');
+                message.className = 'text-gray-500 mt-10 text-center';
+                message.textContent = 'No se pudo cargar el complemento del diagrama de caja. Las otras gráficas siguen disponibles.';
+                boxContainer.appendChild(message);
+                return;
+            }
+
+            try {
+                chartInstances.box = new Chart(document.getElementById('boxChart').getContext('2d'), {
+                    type: 'boxplot',
+                    data: {
+                        labels: ['Distribución de los datos'],
+                        datasets: [{
+                            label: 'Datos ingresados',
+                            backgroundColor: 'rgba(99, 102, 241, 0.22)',
+                            borderColor: '#6366f1',
+                            borderWidth: 2,
+                            outlierBackgroundColor: '#ef4444',
+                            outlierRadius: 4,
+                            data: [{
+                                min: sortedData[0],
+                                q1: stats.q1,
+                                median: stats.median,
+                                q3: stats.q3,
+                                max: sortedData[sortedData.length - 1],
+                                whiskerMin: sortedData.find(value => value >= stats.lowerLimit),
+                                whiskerMax: [...sortedData].reverse().find(value => value <= stats.upperLimit),
+                                mean: stats.mean,
+                                items: [],
+                                outliers: stats.outliers
+                            }],
+                            minStats: 'min',
+                            maxStats: 'max'
+                        }]
+                    },
+                    options: {
+                        ...sharedOptions,
+                        indexAxis: 'y',
+                        plugins: { ...sharedOptions.plugins, legend: { display: false } },
+                        scales: { x: { ticks: { color: '#78809a' }, grid: { color: '#edf0f7' } }, y: { ticks: { color: '#78809a' }, grid: { display: false } } }
+                    }
+                });
+            } catch (error) {
+                console.error('No fue posible dibujar el boxplot:', error);
+                boxContainer.replaceChildren();
+                const message = document.createElement('div');
+                message.className = 'text-gray-500 mt-10 text-center';
+                message.textContent = 'No se pudo representar el diagrama de caja con esta versión del complemento.';
+                boxContainer.appendChild(message);
+            }
+        }
+
+        /** Construye un comentario interpretativo en lenguaje sencillo. */
+        function generateInterpretations() {
+            const container = document.getElementById('interpretation-content');
+            container.replaceChildren();
+
+            // Construye el contenido con nodos de texto, nunca interpolando datos
+            // aportados por usuarios dentro de una cadena HTML.
+            const addParagraph = (text, className = '') => {
+                const paragraph = document.createElement('p');
+                if (className) paragraph.className = className;
+                paragraph.textContent = text;
+                container.appendChild(paragraph);
+            };
+            const addHeading = text => {
+                const heading = document.createElement('h4');
+                heading.className = 'font-bold text-lg text-utp-blue mt-4';
+                heading.textContent = text;
+                container.appendChild(heading);
+            };
+
+            if (!isQuantitative) {
+                const counts = new Map();
+                globalData.forEach(value => {
+                    const label = String(value);
+                    counts.set(label, (counts.get(label) || 0) + 1);
+                });
+                const maxCount = [...counts.values()].reduce((maximum, count) => Math.max(maximum, count), 0);
+                const topLabels = [...counts.entries()].filter(([, count]) => count === maxCount).map(([label]) => label);
+                addParagraph(`Se analizaron ${globalData.length} observaciones de una variable cualitativa. Para este tipo de variable no se calculan media, varianza ni desviación estándar.`);
+                addHeading('Frecuencias y categoría más frecuente');
+                addParagraph(`La frecuencia máxima es ${maxCount} de ${globalData.length} observaciones (${(maxCount / globalData.length * 100).toFixed(2)}%). Categoría(s) con esa frecuencia: ${topLabels.join(', ')}.`);
+                addParagraph('Consulta la tabla de frecuencias y las gráficas para comparar las categorías. Si las categorías tienen un orden natural, recuerda que esa información debe definirse según el contexto del estudio.');
+                return;
+            }
+
+            addParagraph(`Se analizaron ${globalData.length} observaciones cuantitativas. Las medidas presentadas son poblacionales: la varianza se calcula dividiendo entre N.`);
+            addHeading('1. Tendencia central');
+            addParagraph(`La media es ${stats.mean.toFixed(2)} y la mediana es ${stats.median.toFixed(2)}. La media resume el promedio aritmético y la mediana señala el centro de los datos ordenados. La coincidencia entre ambas no demuestra por sí sola que la distribución sea simétrica.`);
+
+            addHeading('2. Variabilidad y dispersión');
+            addParagraph(`El rango es ${stats.range.toFixed(2)} y la desviación estándar poblacional es ${stats.stdDev.toFixed(2)}. ${stats.stdDev === 0 ? 'No hay variación: todas las observaciones tienen el mismo valor.' : 'Cuanto mayor sea la desviación estándar, mayor suele ser la dispersión alrededor de la media, considerando la escala de la variable.'}`);
+            if (stats.cv === null) {
+                addParagraph('El coeficiente de variación no está definido porque la media es cero. No debe interpretarse como 0%.');
+            } else {
+                addParagraph(`El coeficiente de variación es ${stats.cv.toFixed(2)}%. Expresa la desviación estándar como porcentaje del valor absoluto de la media; su interpretación depende del contexto y de que la variable tenga una escala con cero significativo.`);
+            }
+
+            addHeading('3. Forma de la distribución');
+            if (stats.skewness === null || stats.kurtosis === null) {
+                addParagraph('Como la desviación estándar es cero, los coeficientes estandarizados de asimetría y curtosis no están definidos: no existe variación con la cual comparar la forma de la distribución.');
+            } else {
+                const skewDescription = Math.abs(stats.skewness) < 0.2
+                    ? 'la asimetría está cerca de cero, lo que sugiere poca asimetría según este indicador'
+                    : stats.skewness > 0
+                        ? 'la asimetría es positiva, compatible con una cola hacia valores altos'
+                        : 'la asimetría es negativa, compatible con una cola hacia valores bajos';
+                addParagraph(`El coeficiente de asimetría es ${stats.skewness.toFixed(2)}; ${skewDescription}. Este indicador describe la asimetría, pero no sustituye la inspección del gráfico.`);
+
+                const excessKurtosis = stats.kurtosis - 3;
+                const kurtosisDescription = Math.abs(excessKurtosis) < 0.3
+                    ? 'la curtosis está cerca del valor de referencia 3'
+                    : excessKurtosis > 0
+                        ? 'la curtosis es superior a 3 (exceso positivo)'
+                        : 'la curtosis es inferior a 3 (exceso negativo)';
+                addParagraph(`El coeficiente de curtosis por momentos es ${stats.kurtosis.toFixed(2)}; ${kurtosisDescription}. La curtosis resume aspectos de colas y concentración, pero por sí sola no demuestra que una distribución sea normal o no normal.`);
+            }
+
+            addHeading('4. Valores atípicos');
+            if (stats.outliers.length === 0) {
+                addParagraph(`Con el criterio de Tukey (1,5 × RIC), no se detectaron valores atípicos. Los límites calculados son ${stats.lowerLimit.toFixed(2)} y ${stats.upperLimit.toFixed(2)}.`);
+            } else {
+                addParagraph(`Con el criterio de Tukey (1,5 × RIC), se detectaron ${stats.outliers.length} observación(es) atípica(s): ${stats.outliers.join(', ')}. Conviene verificar estos datos y el contexto antes de decidir si deben mantenerse o corregirse.`);
+            }
+
+            addParagraph('Nota metodológica: los cuartiles se estiman por interpolación lineal. Otros libros o programas pueden usar métodos distintos y producir pequeñas diferencias.', 'text-sm text-gray-500 mt-5');
+        }
+
+        /** Limpia los campos numéricos al analizar una variable cualitativa. */
+        function resetDashboard() {
+            const formulaPanel = document.getElementById('quantitative-formulas');
+            if (formulaPanel) formulaPanel.classList.add('hidden');
+            const emptyValue = '—';
+            const resultIds = [
+                'res-mean', 'res-median', 'res-mode', 'res-q1', 'res-q2', 'res-q3',
+                'res-iqr', 'res-range', 'res-variance', 'res-stddev', 'res-cv',
+                'res-m1', 'res-m2', 'res-m3', 'res-m4', 'res-skewness', 'res-kurtosis',
+                'res-li', 'res-ls', 'res-outliers'
+            ];
+            resultIds.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.textContent = emptyValue;
+            });
+        }
+
+        // ---------------------------- 5. Inicio -------------------------------
+        // La interfaz arranca en la portada. Todas las acciones se conectan mediante
+        // botones y estas funciones globales para que el archivo pueda abrirse solo.
     </script>
     </div><!-- /app-shell -->
     <div id="toast-message" class="hidden" role="status" aria-live="polite"><i class="fa-solid fa-circle-info"></i><span id="toast-text"></span></div>
