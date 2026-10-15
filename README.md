@@ -1,2 +1,1190 @@
 # Estadistica
-Aplicación web para el análisis de estadística descriptiva.
+#Aplicación web para el análisis de estadística descriptiva.
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StatLab UTP — Estadística descriptiva</title>
+    <meta name="description" content="Explora, organiza y comprende tus datos con herramientas de estadística descriptiva.">
+    <meta name="theme-color" content="#11152d">
+    
+    <!-- Tailwind CSS para el diseño -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chart.js para gráficas -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Plugin de Chart.js para Boxplot -->
+    <script src="https://cdn.jsdelivr.net/npm/@sgratzl/chartjs-chart-boxplot@4.2.0/build/index.umd.min.js"></script>
+    
+    <!-- PapaParse para CSV -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+
+    <!-- FontAwesome para Íconos -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Configuración personalizada de Tailwind -->
+    <script>
+        function configureTailwind() {
+            if (typeof tailwind !== 'undefined') {
+                tailwind.config = {
+                    theme: {
+                        extend: {
+                            colors: {
+                                utp: {
+                                    blue: '#004A98',
+                                    light: '#E6F0FA',
+                                    accent: '#FDB913'
+                                }
+                            },
+                            fontFamily: {
+                                sans: ['Inter', 'sans-serif'],
+                            }
+                        }
+                    }
+                }
+            } else {
+                setTimeout(configureTailwind, 50);
+            }
+        }
+        configureTailwind();
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap');
+        :root { --ink:#171a35; --muted:#78809a; --navy:#11152d; --blue:#4f46e5; --mint:#62e6c6; --paper:#f5f7fc; --line:#e8ebf5; }
+        * { box-sizing:border-box; }
+        body { font-family:'DM Sans',sans-serif; background:var(--paper); color:var(--ink); }
+        h1,h2,h3,h4,.font-bold,.font-semibold { font-family:'Manrope','DM Sans',sans-serif; }
+        button, textarea, input { font:inherit; }
+        button { cursor:pointer; }
+        .hidden { display:none !important; }
+        .fade-in { animation:fadeIn .36s cubic-bezier(.2,.7,.2,1); }
+        @keyframes fadeIn { from {opacity:0;transform:translateY(9px)} to {opacity:1;transform:translateY(0)} }
+        .custom-scrollbar::-webkit-scrollbar { height:8px;width:8px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background:transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background:#d9deed;border-radius:12px; }
+        .glass-card { background:rgba(255,255,255,.92); border:1px solid rgba(226,230,242,.9); box-shadow:0 12px 34px rgba(30,38,84,.055); backdrop-filter:blur(16px); }
+        .bg-white.rounded-2xl,.bg-white.rounded-xl { box-shadow:0 12px 34px rgba(30,38,84,.055); }
+        .welcome-screen { position:fixed; inset:0; z-index:100; overflow:auto; color:#fff; background:radial-gradient(ellipse at 82% 45%,rgba(83,72,202,.26),transparent 38%),radial-gradient(ellipse at 15% 92%,rgba(37,180,165,.12),transparent 33%),#11152d; }
+        .welcome-screen::before { content:""; position:absolute; inset:0; pointer-events:none; opacity:.2; background-image:linear-gradient(rgba(255,255,255,.055) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.055) 1px,transparent 1px); background-size:46px 46px; mask-image:linear-gradient(to bottom,black,transparent 90%); }
+        .welcome-inner { position:relative; max-width:1400px; min-height:100vh; margin:0 auto; padding:26px clamp(22px,5vw,76px) 22px; display:flex; flex-direction:column; }
+        .welcome-top { display:flex; justify-content:space-between; align-items:center; gap:18px; }
+        .brand-lockup { display:flex; align-items:center; gap:12px; font-family:'Manrope',sans-serif; font-weight:800; letter-spacing:-.04em; font-size:18px; }
+        .brand-symbol { width:42px;height:42px; border-radius:15px; display:grid;place-items:center; color:#11152d; background:linear-gradient(135deg,#70f0d1,#8cc9ff); box-shadow:0 8px 26px rgba(98,230,198,.19); font-size:19px; }
+        .brand-sub { color:#9da5c7; font-family:'DM Sans',sans-serif; font-weight:500; letter-spacing:.02em; font-size:11px; margin-top:1px; }
+        .welcome-tag { border:1px solid rgba(255,255,255,.15); border-radius:999px; padding:9px 13px; color:#c5cbe3; font-size:12px; letter-spacing:.08em; text-transform:uppercase; background:rgba(255,255,255,.035); }
+        .welcome-grid { display:grid; grid-template-columns:1.03fr .97fr; align-items:center; gap:clamp(28px,6vw,90px); flex:1; padding:54px 0 45px; }
+        .welcome-copy { max-width:650px; }
+        .welcome-eyebrow { display:inline-flex; align-items:center; gap:9px; color:#83efd7; text-transform:uppercase; letter-spacing:.17em; font-size:11px; font-weight:700; margin-bottom:24px; }
+        .eyebrow-dot { width:7px;height:7px;border-radius:50%;background:#70efd0;box-shadow:0 0 0 5px rgba(112,239,208,.1); }
+        .welcome-title { font-size:clamp(42px,5.5vw,76px); line-height:1.03; letter-spacing:-.065em; font-weight:800; margin:0; }
+        .welcome-title span { display:block; color:#7cebd0; }
+        .welcome-description { color:#b4bbd7; font-size:clamp(15px,1.5vw,18px); line-height:1.8; max-width:515px; margin:24px 0 31px; }
+        .launch-button { display:inline-flex; align-items:center; justify-content:center; gap:13px; border:0; border-radius:15px; color:#10152c; background:linear-gradient(100deg,#80f0d5,#8bd8ff); padding:17px 22px; min-height:58px; font-weight:800; box-shadow:0 12px 28px rgba(82,218,193,.17); transition:transform .2s,filter .2s,box-shadow .2s; }
+        .launch-button:hover { transform:translateY(-3px);filter:saturate(1.1);box-shadow:0 17px 34px rgba(82,218,193,.25); }
+        .welcome-meta { display:flex; flex-wrap:wrap; gap:17px 22px; margin-top:34px; color:#a7b0d1; font-size:12px; }
+        .welcome-meta span { display:flex;align-items:center;gap:8px; }
+        .welcome-meta i { color:#7cebd0; }
+        .welcome-visual { position:relative; min-height:440px; display:grid; place-items:center; }
+        .orbital { position:absolute; width:min(40vw,460px); aspect-ratio:1; border:1px solid rgba(148,158,226,.17); border-radius:50%; transform:rotate(-24deg); }
+        .orbital::before,.orbital::after { content:"";position:absolute;border:1px solid rgba(148,158,226,.16);border-radius:50%;inset:12%; }
+        .orbital::after { inset:25%; }
+        .orbital-dot { position:absolute; right:15%;top:17%;width:11px;height:11px;border-radius:50%;background:#7cebd0;box-shadow:0 0 24px #7cebd0; }
+        .data-panel { position:relative; z-index:2; width:min(100%,440px); border:1px solid rgba(255,255,255,.14); border-radius:25px; padding:24px; background:linear-gradient(145deg,rgba(38,44,83,.88),rgba(23,27,57,.92)); box-shadow:0 35px 85px rgba(0,0,0,.3),inset 0 1px rgba(255,255,255,.06); transform:rotate(-2deg); }
+        .data-panel-top { display:flex;justify-content:space-between;align-items:center;color:#e6eaff;font-size:13px;font-weight:700; }
+        .live-pill { border-radius:999px;background:rgba(112,239,208,.1);color:#7cebd0;padding:6px 9px;font-size:9px;letter-spacing:.12em; }
+        .data-summary { display:flex; gap:12px; margin:22px 0 18px; }
+        .summary-chip { flex:1; padding:12px 13px; background:rgba(255,255,255,.045);border:1px solid rgba(255,255,255,.06);border-radius:14px; }
+        .summary-chip small { display:block;color:#929bbc;font-size:10px;margin-bottom:7px; }
+        .summary-chip strong { color:#f6f7ff;font-family:'Manrope',sans-serif;font-size:20px;letter-spacing:-.04em; }
+        .summary-chip em { color:#7cebd0;font-size:10px;font-style:normal;margin-left:4px; }
+        .sample-chart { height:145px;display:flex;align-items:flex-end;gap:10px;padding:15px 8px 2px;position:relative; }
+        .sample-chart::before { content:"";position:absolute;inset:10px 0 8px;background:repeating-linear-gradient(to bottom,rgba(255,255,255,.075) 0,rgba(255,255,255,.075) 1px,transparent 1px,transparent 34px); }
+        .sample-bar { flex:1;min-width:10px;border-radius:7px 7px 3px 3px;background:linear-gradient(to top,rgba(99,102,241,.54),#79ead2);position:relative;z-index:1;opacity:.94; }
+        .sample-bar:nth-child(2n) { background:linear-gradient(to top,rgba(99,102,241,.48),#a8b4ff); }
+        .sample-chart-labels { display:flex;justify-content:space-between;color:#828cad;font-size:9px;margin-top:11px; }
+        .data-panel-foot { display:flex;justify-content:space-between;align-items:center;border-top:1px solid rgba(255,255,255,.08);padding-top:16px;margin-top:17px;color:#a6afcf;font-size:11px; }
+        .data-panel-foot strong { color:#7cebd0;font-weight:700; }
+        .floating-note { position:absolute; z-index:3; right:-4%; bottom:8%; display:flex;align-items:center;gap:11px;border:1px solid rgba(255,255,255,.13);background:rgba(31,37,72,.88);backdrop-filter:blur(10px);padding:12px 15px;border-radius:16px;box-shadow:0 15px 35px rgba(0,0,0,.22); }
+        .floating-icon { display:grid;place-items:center;width:34px;height:34px;border-radius:11px;background:rgba(124,235,208,.13);color:#7cebd0; }
+        .floating-note small { display:block;color:#939cbd;font-size:10px; }
+        .floating-note strong { display:block;color:#f1f3ff;font-size:12px;margin-top:3px; }
+        .welcome-footer { border-top:1px solid rgba(255,255,255,.1);padding-top:18px;display:flex;justify-content:space-between;gap:12px;color:#858eaf;font-size:11px; }
+        .app-shell { display:flex;width:100%;height:100vh;min-height:0;background:var(--paper); }
+        .app-sidebar { width:258px;flex:0 0 258px;background:var(--navy);color:white;display:flex;flex-direction:column;padding:23px 15px 17px;position:relative;z-index:20; }
+        .sidebar-brand { display:flex;align-items:center;gap:11px;padding:0 10px 26px;border-bottom:1px solid rgba(255,255,255,.09); }
+        .sidebar-brand .brand-symbol { width:39px;height:39px;border-radius:13px;flex-shrink:0; }
+        .sidebar-name { font-family:'Manrope',sans-serif;font-size:16px;font-weight:800;letter-spacing:-.04em; }
+        .sidebar-name span { color:#7cebd0; }
+        .sidebar-kicker { color:#7f89ac;font-size:10px;letter-spacing:.1em;text-transform:uppercase;margin-top:2px; }
+        .nav-caption { padding:24px 11px 10px;color:#727da3;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase; }
+        .app-nav { display:flex;flex-direction:column;gap:6px;padding:0 0 15px; }
+        .nav-button { display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:12px 13px;border:1px solid transparent;border-radius:13px;text-align:left;color:#aab3d0;background:transparent;transition:background .2s,color .2s,border-color .2s; }
+        .nav-button i { width:21px;text-align:center;font-size:15px;flex-shrink:0; }
+        .nav-button .nav-text { font-weight:600;font-size:12px; }
+        .nav-button:hover { background:rgba(255,255,255,.055);color:white; }
+        .nav-button.is-active { background:linear-gradient(100deg,rgba(124,235,208,.15),rgba(124,235,208,.065));border-color:rgba(124,235,208,.16);color:#85f0d5;box-shadow:inset 3px 0 #7cebd0; }
+        .nav-button.nav-locked { color:#747e9f; }
+        .nav-button.nav-locked::after { content:"•"; margin-left:auto;color:#667191; }
+        .sidebar-bottom { margin-top:auto;padding:16px 10px 0;border-top:1px solid rgba(255,255,255,.09);color:#7f89ac;font-size:11px;line-height:1.65; }
+        .sidebar-bottom strong { color:#c4cbe4;font-weight:600; }
+        .app-main { min-width:0;flex:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;background:var(--paper); }
+        .app-header { min-height:84px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px clamp(20px,3vw,42px);background:rgba(255,255,255,.86);border-bottom:1px solid #e9ecf5;box-shadow:0 4px 18px rgba(25,31,75,.025);z-index:10; }
+        .app-header-kicker { color:#9299b1;font-size:10px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;margin-bottom:5px; }
+        #section-title { color:#1b1f3d;font-size:clamp(18px,2vw,24px);font-weight:800;letter-spacing:-.045em;line-height:1.25; }
+        #data-badge { border:1px solid #d2f5e7;color:#167a5a;background:#edfcf6;box-shadow:none;padding:10px 14px;font-size:12px;white-space:nowrap; }
+        .header-action { display:inline-flex;align-items:center;gap:8px;background:white;border:1px solid #e0e5f1;color:#5e6684;border-radius:12px;padding:10px 13px;font-size:12px;font-weight:700;transition:.2s; }
+        .header-action:hover { border-color:#b2bad2;background:#f8f9ff; }
+        #main-scroll { padding:clamp(18px,3vw,38px); }
+        #main-scroll section { animation:fadeIn .34s ease-out; }
+        .bg-utp-blue { background-color:#4f46e5 !important; }
+        .text-utp-blue { color:#4f46e5 !important; }
+        .border-utp-blue { border-color:#4f46e5 !important; }
+        .from-utp-blue { --tw-gradient-from:#4f46e5 var(--tw-gradient-from-position) !important; }
+        .hover\:bg-blue-700:hover { background-color:#4338ca !important; }
+        textarea { min-height:138px;line-height:1.7; }
+        textarea:focus { outline:none;box-shadow:0 0 0 4px rgba(99,102,241,.1);border-color:#818cf8 !important; }
+        input[type=file] { cursor:pointer; }
+        table thead { letter-spacing:.04em; }
+        table tbody tr { transition:background .15s; }
+        #toast-message { position:fixed;z-index:150;right:22px;bottom:22px;max-width:min(430px,calc(100vw - 32px));border-radius:14px;background:#171a35;color:white;padding:14px 18px;font-size:13px;font-weight:600;box-shadow:0 18px 44px rgba(13,18,49,.23);animation:fadeIn .2s ease-out; }
+        #toast-message i { color:#7cebd0;margin-right:8px; }
+        @media (max-width:900px) {
+            .app-sidebar { width:218px;flex-basis:218px; }
+            .welcome-grid { gap:25px; }
+            .welcome-visual { min-height:370px; }
+            .data-panel { padding:19px; }
+            .floating-note { right:-1%; }
+        }
+        @media (max-width:700px) {
+            body { height:auto;min-height:100vh;overflow:auto; }
+            .welcome-inner { padding:20px 20px 18px; }
+            .welcome-tag { font-size:9px;padding:8px 10px; }
+            .welcome-grid { grid-template-columns:1fr;gap:10px;padding:48px 0 30px; }
+            .welcome-title { font-size:clamp(43px,12vw,66px); }
+            .welcome-description { font-size:15px;margin:19px 0 23px; }
+            .welcome-meta { margin-top:24px;gap:13px 16px; }
+            .welcome-visual { min-height:300px;margin:0 0 5px; }
+            .orbital { width:min(77vw,350px); }
+            .data-panel { width:min(100%,390px);padding:18px;border-radius:20px; }
+            .data-summary { margin:15px 0 12px;gap:8px; }
+            .summary-chip { padding:10px; }
+            .summary-chip strong { font-size:18px; }
+            .sample-chart { height:100px;gap:7px; }
+            .floating-note { right:0;bottom:0; }
+            .welcome-footer { flex-direction:column;gap:5px; }
+            .app-shell { height:auto;min-height:100vh;display:flex;flex-direction:column; }
+            .app-sidebar { width:100%;flex:0 0 auto;padding:13px 12px 10px; }
+            .sidebar-brand { padding:0 5px 12px;border-bottom:0; }
+            .sidebar-brand .brand-symbol { width:34px;height:34px;border-radius:11px; }
+            .sidebar-name { font-size:15px; }
+            .sidebar-kicker { font-size:9px; }
+            .nav-caption,.sidebar-bottom { display:none; }
+            .app-nav { display:flex;flex-direction:row;gap:6px;overflow-x:auto;padding:2px 0 3px;scrollbar-width:none; }
+            .app-nav::-webkit-scrollbar { display:none; }
+            .nav-button { flex:0 0 auto;width:auto;min-height:42px;padding:9px 11px;gap:7px;border-radius:11px; }
+            .nav-button i { width:auto;font-size:13px; }
+            .nav-button .nav-text { font-size:11px;white-space:nowrap; }
+            .nav-button.nav-locked::after { display:none; }
+            .app-main { height:auto;min-height:0;overflow:visible; }
+            .app-header { min-height:72px;padding:14px 18px; }
+            .app-header-kicker { font-size:9px; }
+            #data-badge { padding:8px 10px;font-size:10px; }
+            #main-scroll { padding:17px 13px 30px;overflow:visible; }
+        }
+        @media (max-width:390px) {
+            .welcome-tag { display:none; }
+            .data-summary { gap:6px; }
+            .summary-chip strong { font-size:16px; }
+            .header-action { padding:9px;font-size:0; }
+            .header-action i { font-size:13px; }
+            .nav-button { padding:9px; }
+            .nav-button .nav-text { font-size:10px; }
+        }
+    </style>
+</head>
+<body class="text-gray-800 h-screen flex overflow-hidden">
+    <!-- Portada inicial -->
+    <section id="welcome-screen" class="welcome-screen" aria-label="Bienvenida a Estadística descriptiva">
+        <div class="welcome-inner">
+            <header class="welcome-top">
+                <div class="brand-lockup">
+                    <div class="brand-symbol"><i class="fa-solid fa-chart-simple"></i></div>
+                    <div><div>StatLab</div><div class="brand-sub">UNIVERSIDAD TECNOLÓGICA DE PEREIRA</div></div>
+                </div>
+                <div class="welcome-tag"><i class="fa-solid fa-sparkles mr-2"></i>Tu espacio de análisis</div>
+            </header>
+            <div class="welcome-grid">
+                <div class="welcome-copy">
+                    <div class="welcome-eyebrow"><span class="eyebrow-dot"></span>Datos claros. Mejores conclusiones.</div>
+                    <h1 class="welcome-title">Estadística <span>descriptiva.</span></h1>
+                    <p class="welcome-description">Dale sentido a tus datos. Organiza información, descubre patrones y convierte los resultados estadísticos en conclusiones fáciles de comprender.</p>
+                    <button class="launch-button" onclick="enterApp()"><span>Entrar al analizador</span><i class="fa-solid fa-arrow-right"></i></button>
+                    <div class="welcome-meta">
+                        <span><i class="fa-solid fa-check-circle"></i> Cálculos automáticos</span>
+                        <span><i class="fa-solid fa-chart-column"></i> Gráficas interactivas</span>
+                        <span><i class="fa-solid fa-wand-magic-sparkles"></i> Interpretaciones</span>
+                    </div>
+                </div>
+                <div class="welcome-visual" aria-hidden="true">
+                    <div class="orbital"><span class="orbital-dot"></span></div>
+                    <div class="data-panel">
+                        <div class="data-panel-top"><span><i class="fa-solid fa-chart-line mr-2" style="color:#7cebd0"></i>Vista previa de datos</span><span class="live-pill">STAT / INSIGHTS</span></div>
+                        <div class="data-summary">
+                            <div class="summary-chip"><small>Media</small><strong>24.8</strong><em>↗</em></div>
+                            <div class="summary-chip"><small>Mediana</small><strong>23.5</strong></div>
+                            <div class="summary-chip"><small>Registros</small><strong>128</strong></div>
+                        </div>
+                        <div class="sample-chart">
+                            <div class="sample-bar" style="height:34%"></div><div class="sample-bar" style="height:49%"></div><div class="sample-bar" style="height:40%"></div><div class="sample-bar" style="height:68%"></div><div class="sample-bar" style="height:57%"></div><div class="sample-bar" style="height:82%"></div><div class="sample-bar" style="height:70%"></div><div class="sample-bar" style="height:94%"></div><div class="sample-bar" style="height:64%"></div><div class="sample-bar" style="height:77%"></div>
+                        </div>
+                        <div class="sample-chart-labels"><span>ENE</span><span>MAR</span><span>MAY</span><span>JUL</span><span>SEP</span><span>NOV</span></div>
+                        <div class="data-panel-foot"><span>Resumen de distribución</span><strong><i class="fa-solid fa-circle-check mr-1"></i>Listo para explorar</strong></div>
+                    </div>
+                    <div class="floating-note"><div class="floating-icon"><i class="fa-solid fa-wand-magic-sparkles"></i></div><div><small>De los datos a la comprensión</small><strong>Todo en un solo lugar</strong></div></div>
+                </div>
+            </div>
+            <footer class="welcome-footer"><span>Un entorno diseñado para aprender haciendo.</span><span>Proyecto de Estadística · Ingeniería de Sistemas · UTP</span></footer>
+        </div>
+    </section>
+
+    <div id="app-shell" class="app-shell hidden">
+
+    <!-- Navegación principal por pestañas -->
+    <aside class="app-sidebar">
+        <div class="sidebar-brand">
+            <div class="brand-symbol"><i class="fa-solid fa-chart-simple"></i></div>
+            <div><div class="sidebar-name">Stat<span>Lab</span></div><div class="sidebar-kicker">Análisis estadístico</div></div>
+        </div>
+        <div class="nav-caption">Herramientas</div>
+        <nav class="app-nav" aria-label="Secciones del analizador">
+            <button onclick="switchTab('input')" id="btn-input" class="nav-button is-active" title="Ingreso de datos"><i class="fa-solid fa-database"></i><span class="nav-text">Datos</span></button>
+            <button onclick="switchTab('dashboard')" id="btn-dashboard" class="nav-button nav-locked" title="Resumen estadístico"><i class="fa-solid fa-chart-pie"></i><span class="nav-text">Resumen</span></button>
+            <button onclick="switchTab('frequencies')" id="btn-frequencies" class="nav-button nav-locked" title="Tablas de frecuencia"><i class="fa-solid fa-table-list"></i><span class="nav-text">Frecuencias</span></button>
+            <button onclick="switchTab('charts')" id="btn-charts" class="nav-button nav-locked" title="Gráficas"><i class="fa-solid fa-chart-column"></i><span class="nav-text">Gráficas</span></button>
+            <button onclick="switchTab('interpretations')" id="btn-interpretations" class="nav-button nav-locked" title="Interpretación de resultados"><i class="fa-solid fa-lightbulb"></i><span class="nav-text">Interpretación</span></button>
+        </nav>
+        <div class="sidebar-bottom"><strong>StatLab · UTP</strong><br>Estadística descriptiva<br><span style="color:#647094">Visualiza · Comprende · Decide</span></div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="flex-1 flex flex-col h-screen overflow-hidden bg-gray-50 relative">
+        <!-- Header -->
+        <header class="app-header">
+            <div><div class="app-header-kicker">STATLAB / ESPACIO DE TRABAJO</div><h2 id="section-title">Ingreso y gestión de datos</h2></div>
+            <div class="flex items-center gap-3">
+                <button class="header-action" onclick="resetForNewAnalysis()" title="Limpiar y empezar un nuevo análisis"><i class="fa-solid fa-plus"></i><span>Nuevo análisis</span></button>
+                <div id="data-badge" class="hidden rounded-full font-semibold flex items-center"><i class="fa-solid fa-circle-check mr-2"></i> <span>Registros</span><span id="n-count" class="ml-1">0</span></div>
+            </div>
+        </header>
+
+        <!-- Contenedor scrolleable -->
+        <div class="flex-1 overflow-y-auto p-6 custom-scrollbar" id="main-scroll">
+            
+            <!-- SECCIÓN 1: INGRESO DE DATOS -->
+            <section id="sec-input" class="max-w-5xl mx-auto fade-in">
+                <div class="bg-white rounded-2xl shadow-xl p-8 border border-gray-100 relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-utp-blue to-utp-accent"></div>
+                    <h3 class="text-xl font-bold mb-4 text-gray-800"><i class="fa-solid fa-keyboard mr-2 text-utp-blue"></i> Empieza con tus datos</h3>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <!-- Opción Manual -->
+                        <div class="bg-gray-50 p-6 rounded-xl border border-gray-200 hover:shadow-md transition-shadow">
+                            <h4 class="font-semibold text-lg mb-2 text-utp-blue">Pegar datos manualmente</h4>
+                            <p class="text-sm text-gray-500 mb-4">Ingresa los datos separados por comas (ej: 12, 15.5, 18, 20)</p>
+                            <textarea id="manual-data" rows="5" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-utp-blue focus:border-utp-blue outline-none transition-all resize-none shadow-inner" placeholder="Ej: 1, 2, 3, 4, 5..."></textarea>
+                            <button onclick="processManualData()" class="mt-4 w-full bg-utp-blue text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-all transform hover:scale-[1.02] shadow-lg font-semibold">
+                                <i class="fa-solid fa-cogs mr-2"></i> Analizar mis datos
+                            </button>
+                        </div>
+
+                        <!-- Opción CSV -->
+                        <div class="bg-gray-50 p-6 rounded-xl border border-gray-200 hover:shadow-md transition-shadow flex flex-col justify-between">
+                            <div>
+                                <h4 class="font-semibold text-lg mb-2 text-utp-blue">Importar archivo CSV</h4>
+                                <p class="text-sm text-gray-500 mb-4">Carga un archivo .csv con tus observaciones; puedes usar una columna o valores separados por comas.</p>
+                                
+                                <div class="flex items-center justify-center w-full">
+                                    <label for="dropzone-file" class="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-blue-300 rounded-lg cursor-pointer bg-blue-50 hover:bg-blue-100 transition-colors">
+                                        <div class="flex flex-col items-center justify-center pt-5 pb-6">
+                                            <i class="fa-solid fa-cloud-arrow-up text-3xl text-blue-500 mb-2"></i>
+                                            <p class="text-sm text-gray-500"><span class="font-semibold">Clic para subir</span> o arrastra el archivo</p>
+                                        </div>
+                                        <input id="dropzone-file" type="file" accept=".csv" class="hidden" onchange="handleFileUpload(event)" />
+                                    </label>
+                                </div>
+                            </div>
+                            <div id="file-name-display" class="mt-2 text-sm text-center text-green-600 font-semibold h-5"></div>
+                        </div>
+                    </div>
+
+                    <!-- Mensajes de Error -->
+                    <div id="error-msg" class="hidden mt-6 bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded shadow-sm" role="alert">
+                        <p class="font-bold">Error</p>
+                        <p id="error-text">Revisa los datos ingresados.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECCIÓN 2: DASHBOARD RESULTADOS -->
+            <section id="sec-dashboard" class="hidden max-w-7xl mx-auto fade-in">
+                
+                <!-- Identificación de Variables -->
+                <div class="bg-white p-4 rounded-xl shadow-sm mb-6 flex flex-wrap gap-4 items-center border-l-4 border-utp-accent">
+                    <div class="flex items-center mr-6">
+                        <i class="fa-solid fa-tags text-utp-blue text-xl mr-3"></i>
+                        <div>
+                            <p class="text-xs text-gray-500 uppercase font-bold tracking-wider">Tipo de Variable</p>
+                            <p id="var-type" class="font-semibold text-gray-800 text-lg">Cuantitativa</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center mr-6">
+                        <i class="fa-solid fa-shapes text-utp-blue text-xl mr-3"></i>
+                        <div>
+                            <p class="text-xs text-gray-500 uppercase font-bold tracking-wider">Naturaleza</p>
+                            <p id="var-nature" class="font-semibold text-gray-800 text-lg">-</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <i class="fa-solid fa-users text-utp-blue text-xl mr-3"></i>
+                        <div>
+                            <p class="text-xs text-gray-500 uppercase font-bold tracking-wider">Población (N)</p>
+                            <p id="pop-size" class="font-semibold text-gray-800 text-lg">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Medidas de Tendencia Central -->
+                    <div class="glass-card rounded-2xl p-6 hover:shadow-xl transition-shadow border-t-4 border-t-blue-500">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2"><i class="fa-solid fa-bullseye text-blue-500 mr-2"></i> M3. Tendencia Central</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                <span class="text-gray-600 font-medium" title="Suma de valores dividida por N">Media Aritmética (μ)</span>
+                                <span id="res-mean" class="font-bold text-lg text-blue-900">-</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                <span class="text-gray-600 font-medium" title="Valor central de los datos ordenados">Mediana (Me)</span>
+                                <span id="res-median" class="font-bold text-lg text-blue-900">-</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                <span class="text-gray-600 font-medium" title="Valor(es) que más se repite(n)">Moda (Mo)</span>
+                                <span id="res-mode" class="font-bold text-lg text-blue-900 truncate max-w-[120px]" title="">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Medidas de Posición -->
+                    <div class="glass-card rounded-2xl p-6 hover:shadow-xl transition-shadow border-t-4 border-t-purple-500">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2"><i class="fa-solid fa-layer-group text-purple-500 mr-2"></i> M4. Medidas de Posición</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                <span class="text-gray-600 font-medium">Cuartil 1 (Q1 - 25%)</span>
+                                <span id="res-q1" class="font-bold text-lg text-purple-900">-</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                <span class="text-gray-600 font-medium">Cuartil 2 (Q2 - 50%)</span>
+                                <span id="res-q2" class="font-bold text-lg text-purple-900">-</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                <span class="text-gray-600 font-medium">Cuartil 3 (Q3 - 75%)</span>
+                                <span id="res-q3" class="font-bold text-lg text-purple-900">-</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-purple-50 p-2 rounded border border-purple-100">
+                                <span class="text-purple-800 font-bold" title="Rango Intercuartílico (Q3 - Q1)">Rango Intercuartílico (RIC)</span>
+                                <span id="res-iqr" class="font-bold text-lg text-purple-900">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Medidas de Dispersión -->
+                    <div class="glass-card rounded-2xl p-6 hover:shadow-xl transition-shadow border-t-4 border-t-red-500">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2"><i class="fa-solid fa-arrows-left-right text-red-500 mr-2"></i> M5. Dispersión Poblacional</h3>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                <span class="text-gray-600 font-medium" title="Diferencia entre el máximo y el mínimo">Rango</span>
+                                <span id="res-range" class="font-bold text-lg text-red-900">-</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                <span class="text-gray-600 font-medium" title="Varianza Poblacional (σ²)">Varianza (σ²)</span>
+                                <span id="res-variance" class="font-bold text-lg text-red-900">-</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                <span class="text-gray-600 font-medium" title="Desviación Estándar Poblacional (σ)">Desviación Estándar (σ)</span>
+                                <span id="res-stddev" class="font-bold text-lg text-red-900">-</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-red-50 p-2 rounded border border-red-100">
+                                <span class="text-red-800 font-bold" title="(σ / μ) * 100">Coef. Variación (CV)</span>
+                                <span id="res-cv" class="font-bold text-lg text-red-900">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Momentos Estadísticos -->
+                    <div class="glass-card rounded-2xl p-6 hover:shadow-xl transition-shadow border-t-4 border-t-green-500 lg:col-span-2">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2"><i class="fa-solid fa-atom text-green-500 mr-2"></i> M7. Momentos Estadísticos Centrales</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                    <span class="text-gray-600 font-medium">Momento 1 (m₁)</span>
+                                    <span id="res-m1" class="font-bold text-green-900">0</span>
+                                </div>
+                                <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                    <span class="text-gray-600 font-medium">Momento 2 (m₂ = Varianza)</span>
+                                    <span id="res-m2" class="font-bold text-green-900">-</span>
+                                </div>
+                            </div>
+                            <div class="space-y-3">
+                                <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                    <span class="text-gray-600 font-medium">Momento 3 (m₃)</span>
+                                    <span id="res-m3" class="font-bold text-green-900">-</span>
+                                </div>
+                                <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                    <span class="text-gray-600 font-medium">Momento 4 (m₄)</span>
+                                    <span id="res-m4" class="font-bold text-green-900">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="bg-green-50 p-3 rounded-lg border border-green-200 flex justify-between items-center">
+                                <span class="text-green-800 font-bold" title="m3 / σ³">Coef. Asimetría (Pearson)</span>
+                                <span id="res-skewness" class="font-bold text-xl text-green-900">-</span>
+                            </div>
+                            <div class="bg-green-50 p-3 rounded-lg border border-green-200 flex justify-between items-center">
+                                <span class="text-green-800 font-bold" title="m4 / σ⁴">Coef. Curtosis</span>
+                                <span id="res-kurtosis" class="font-bold text-xl text-green-900">-</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Valores Atípicos -->
+                    <div class="glass-card rounded-2xl p-6 hover:shadow-xl transition-shadow border-t-4 border-t-orange-500">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 border-b pb-2"><i class="fa-solid fa-triangle-exclamation text-orange-500 mr-2"></i> M6. Detección de Atípicos</h3>
+                        <div class="space-y-3 mb-4">
+                            <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                <span class="text-gray-600 font-medium" title="Q1 - 1.5*RIC">Límite Inferior (LI)</span>
+                                <span id="res-li" class="font-bold text-orange-900">-</span>
+                            </div>
+                            <div class="flex justify-between items-center bg-gray-50 p-2 rounded">
+                                <span class="text-gray-600 font-medium" title="Q3 + 1.5*RIC">Límite Superior (LS)</span>
+                                <span id="res-ls" class="font-bold text-orange-900">-</span>
+                            </div>
+                        </div>
+                        <div class="bg-orange-50 p-3 rounded-lg border border-orange-200">
+                            <p class="text-orange-800 font-bold mb-1">Valores Atípicos Encontrados:</p>
+                            <p id="res-outliers" class="text-sm text-gray-700 font-mono break-words bg-white p-2 rounded border border-orange-100 max-h-24 overflow-y-auto">Ninguno</p>
+                        </div>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- SECCIÓN 3: TABLAS DE FRECUENCIA -->
+            <section id="sec-frequencies" class="hidden max-w-6xl mx-auto fade-in">
+                <div class="glass-card rounded-2xl shadow-xl p-8 mb-6">
+                    <div class="flex justify-between items-end mb-6 border-b pb-4">
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-800"><i class="fa-solid fa-table-list text-utp-blue mr-2"></i> Módulo 2: Organización de Datos</h3>
+                            <p class="text-gray-500 mt-1" id="table-description">Distribución de Frecuencias</p>
+                        </div>
+                        <div id="sturges-info" class="hidden text-right bg-blue-50 p-3 rounded-lg border border-blue-100">
+                            <p class="text-xs text-blue-800 font-bold uppercase mb-1">Regla de Sturges Aplicada</p>
+                            <div class="flex gap-4 text-sm">
+                                <span>Intervalos (k): <b id="sturges-k"></b></span>
+                                <span>Amplitud (A): <b id="sturges-a"></b></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+                        <table class="w-full text-sm text-left text-gray-500">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-100">
+                                <tr>
+                                    <th scope="col" class="px-6 py-4 rounded-tl-lg">Clase / Intervalo (Xi)</th>
+                                    <th scope="col" class="px-6 py-4 text-center" title="Frecuencia Absoluta">f_i</th>
+                                    <th scope="col" class="px-6 py-4 text-center" title="Frecuencia Acumulada">F_i</th>
+                                    <th scope="col" class="px-6 py-4 text-center" title="Frecuencia Relativa">h_i</th>
+                                    <th scope="col" class="px-6 py-4 text-center" title="Frecuencia Relativa Acumulada">H_i</th>
+                                    <th scope="col" class="px-6 py-4 text-center rounded-tr-lg" title="Porcentaje">%</th>
+                                </tr>
+                            </thead>
+                            <tbody id="freq-table-body" class="bg-white divide-y divide-gray-200">
+                                <!-- Se llena con JS -->
+                            </tbody>
+                            <tfoot class="bg-gray-50 font-bold text-gray-800">
+                                <tr>
+                                    <td class="px-6 py-3">Total</td>
+                                    <td class="px-6 py-3 text-center" id="sum-fi">0</td>
+                                    <td class="px-6 py-3"></td>
+                                    <td class="px-6 py-3 text-center" id="sum-hi">1.000</td>
+                                    <td class="px-6 py-3"></td>
+                                    <td class="px-6 py-3 text-center">100%</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECCIÓN 4: GRÁFICAS -->
+            <section id="sec-charts" class="hidden max-w-7xl mx-auto fade-in">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    
+                    <div class="glass-card p-6 rounded-2xl shadow-lg flex flex-col items-center">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 w-full text-center border-b pb-2">Histograma / Gráfico de Barras</h3>
+                        <div class="w-full h-[350px] relative">
+                            <canvas id="barChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-6 rounded-2xl shadow-lg flex flex-col items-center">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 w-full text-center border-b pb-2">Gráfico Circular</h3>
+                        <div class="w-full h-[350px] relative">
+                            <canvas id="pieChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="glass-card p-6 rounded-2xl shadow-lg flex flex-col items-center lg:col-span-2">
+                        <h3 class="text-lg font-bold text-gray-800 mb-4 w-full text-center border-b pb-2">Diagrama de Caja y Bigotes (Boxplot)</h3>
+                        <div class="w-full h-[300px] relative boxplot-container">
+                            <canvas id="boxChart"></canvas>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-2 text-center w-full">Visualización de la distribución, cuartiles y valores atípicos.</p>
+                    </div>
+
+                </div>
+            </section>
+
+            <!-- SECCIÓN 5: INTERPRETACIONES -->
+            <section id="sec-interpretations" class="hidden max-w-5xl mx-auto fade-in">
+                <div class="glass-card rounded-2xl shadow-xl p-8 border-l-8 border-utp-accent">
+                    <h3 class="text-2xl font-bold text-gray-800 mb-6"><i class="fa-solid fa-wand-magic-sparkles text-utp-accent mr-2"></i> Análisis e Interpretación de Resultados</h3>
+                    
+                    <div class="space-y-6 text-gray-700 leading-relaxed text-lg" id="interpretation-content">
+                        <!-- Generado por JS -->
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <script>
+        // ESTADO GLOBAL
+        let globalData = [];
+        let isQuantitative = true;
+        let isContinuous = false;
+        let sortedData = [];
+        let stats = {};
+        let frequencyData = [];
+
+        // Instancias de gráficos
+        let chartInstances = {
+            bar: null,
+            pie: null,
+            box: null
+        };
+
+        // NAVEGACIÓN Y EXPERIENCIA DE USUARIO
+        let toastTimer = null;
+        function showToast(message) {
+            const toast = document.getElementById('toast-message');
+            document.getElementById('toast-text').innerText = message;
+            toast.classList.remove('hidden');
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => toast.classList.add('hidden'), 3600);
+        }
+
+        function enterApp() {
+            document.getElementById('welcome-screen').classList.add('hidden');
+            document.getElementById('app-shell').classList.remove('hidden');
+            document.body.classList.add('app-mode');
+            switchTab('input');
+        }
+
+        function resetForNewAnalysis() {
+            Object.values(chartInstances).forEach(chart => { if (chart) chart.destroy(); });
+            chartInstances = { bar: null, pie: null, box: null };
+            globalData = [];
+            sortedData = [];
+            stats = {};
+            frequencyData = [];
+            isQuantitative = true;
+            isContinuous = false;
+            document.getElementById('manual-data').value = '';
+            document.getElementById('dropzone-file').value = '';
+            document.getElementById('file-name-display').innerText = '';
+            document.getElementById('data-badge').classList.add('hidden');
+            document.getElementById('n-count').innerText = '0';
+            document.getElementById('freq-table-body').innerHTML = '';
+            document.getElementById('sum-fi').innerText = '0';
+            document.getElementById('sum-hi').innerText = '1.000';
+            document.getElementById('sturges-info').classList.add('hidden');
+            ['btn-dashboard', 'btn-frequencies', 'btn-charts', 'btn-interpretations'].forEach(id => {
+                document.getElementById(id).classList.add('nav-locked');
+            });
+            resetDashboard();
+            document.getElementById('interpretation-content').innerHTML = '';
+            switchTab('input');
+            showToast('Listo. Agrega los datos de tu nuevo análisis.');
+        }
+
+        function switchTab(tabId) {
+            if (globalData.length === 0 && tabId !== 'input') {
+                showToast('Primero agrega o importa tus datos desde la pestaña Datos.');
+                tabId = 'input';
+            }
+
+            ['input', 'dashboard', 'frequencies', 'charts', 'interpretations'].forEach(id => {
+                document.getElementById(`sec-${id}`).classList.add('hidden');
+                const btn = document.getElementById(`btn-${id}`);
+                if (btn) {
+                    btn.classList.remove('is-active');
+                    btn.classList.toggle('nav-locked', globalData.length === 0 && id !== 'input');
+                }
+            });
+
+            document.getElementById(`sec-${tabId}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`btn-${tabId}`);
+            if (activeBtn) {
+                activeBtn.classList.add('is-active');
+                activeBtn.classList.remove('nav-locked');
+            }
+
+            const titles = {
+                'input': 'Ingreso y gestión de datos',
+                'dashboard': 'Resumen estadístico',
+                'frequencies': 'Tablas de frecuencia',
+                'charts': 'Exploración visual',
+                'interpretations': 'Interpretación de resultados'
+            };
+            document.getElementById('section-title').innerText = titles[tabId];
+            document.getElementById('main-scroll').scrollTop = 0;
+            if (tabId === 'charts' && globalData.length > 0) renderCharts();
+        }
+
+        // MÓDULO 1: INGRESO Y PROCESAMIENTO
+        function showError(msg) {
+            const errDiv = document.getElementById('error-msg');
+            const errText = document.getElementById('error-text');
+            errText.innerText = msg;
+            errDiv.classList.remove('hidden');
+            setTimeout(() => { errDiv.classList.add('hidden'); }, 5000);
+        }
+
+        function processManualData() {
+            const rawText = document.getElementById('manual-data').value;
+            if(!rawText.trim()) {
+                showError("El campo está vacío. Ingresa números separados por comas.");
+                return;
+            }
+            
+            // Reemplazar saltos de línea por comas y dividir
+            let rawArray = rawText.replace(/\n/g, ',').split(',').map(item => item.trim()).filter(item => item !== "");
+            analyzeRawData(rawArray);
+        }
+
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('file-name-display').innerText = `Archivo cargado: ${file.name}`;
+
+            Papa.parse(file, {
+                complete: function(results) {
+                    let rawArray = [];
+                    // Extraer los datos (asumiendo que están en la primera columna o fila)
+                    results.data.forEach(row => {
+                        row.forEach(cell => {
+                            if(cell && cell.trim() !== "") rawArray.push(cell.trim());
+                        });
+                    });
+                    
+                    // Remover posible header (si la primera celda no es número y el resto sí)
+                    if(rawArray.length > 1 && isNaN(Number(rawArray[0].replace(',','.'))) && !isNaN(Number(rawArray[1].replace(',','.')))) {
+                        rawArray.shift(); 
+                    }
+                    analyzeRawData(rawArray);
+                },
+                error: function() {
+                    showError("Error al leer el archivo CSV.");
+                }
+            });
+        }
+
+        function analyzeRawData(rawArray) {
+            if(rawArray.length === 0) {
+                showError("No se encontraron datos válidos.");
+                return;
+            }
+
+            // Identificar naturaleza (Cuantitativa vs Cualitativa)
+            isQuantitative = true;
+            let parsedData = [];
+            
+            for(let i=0; i<rawArray.length; i++) {
+                // Reemplazar coma por punto decimal para JS
+                let valStr = rawArray[i].replace(',', '.');
+                let num = Number(valStr);
+                if(isNaN(num)) {
+                    isQuantitative = false;
+                    parsedData.push(rawArray[i]); // Mantener string original
+                } else {
+                    parsedData.push(num);
+                }
+            }
+
+            globalData = parsedData;
+
+            // Actualizar UI General
+            document.getElementById('n-count').innerText = globalData.length;
+            document.getElementById('data-badge').classList.remove('hidden');
+            
+            // Habilitar las pestañas una vez existan datos
+            ['btn-dashboard', 'btn-frequencies', 'btn-charts', 'btn-interpretations'].forEach(id => {
+                document.getElementById(id).classList.remove('nav-locked');
+            });
+
+            if (isQuantitative) {
+                isContinuous = globalData.some(num => num % 1 !== 0);
+                document.getElementById('var-type').innerText = "Cuantitativa";
+                document.getElementById('var-nature').innerText = isContinuous ? "Continua" : "Discreta";
+                
+                // Ejecutar Cálculos Estadísticos (Módulos 3 a 7)
+                calculateQuantitativeStats();
+                generateFrequencyTable(true);
+            } else {
+                document.getElementById('var-type').innerText = "Cualitativa";
+                document.getElementById('var-nature').innerText = "Nominal/Ordinal";
+                // Limpiar dashboard cuantitativo
+                resetDashboard();
+                generateFrequencyTable(false);
+            }
+            
+            document.getElementById('pop-size').innerText = globalData.length;
+            generateInterpretations();
+            
+            // Mostrar resultados
+            if(isQuantitative) switchTab('dashboard');
+            else switchTab('frequencies');
+        }
+
+        function calculateQuantitativeStats() {
+            const N = globalData.length;
+            sortedData = [...globalData].sort((a, b) => a - b);
+            
+            // --- M3. TENDENCIA CENTRAL ---
+            const sum = sortedData.reduce((a, b) => a + b, 0);
+            stats.mean = sum / N;
+
+            // Mediana
+            const mid = Math.floor(N / 2);
+            stats.median = N % 2 !== 0 ? sortedData[mid] : (sortedData[mid - 1] + sortedData[mid]) / 2;
+
+            // Moda
+            const frequencies = {};
+            let maxFreq = 0;
+            sortedData.forEach(v => {
+                frequencies[v] = (frequencies[v] || 0) + 1;
+                if(frequencies[v] > maxFreq) maxFreq = frequencies[v];
+            });
+            const modes = Object.keys(frequencies).filter(k => frequencies[k] === maxFreq).map(Number);
+            stats.mode = modes.length === Object.keys(frequencies).length ? "Amodal" : modes.join(', ');
+
+            // --- M4. MEDIDAS DE POSICIÓN (Cuartiles) ---
+            const getPercentile = (p) => {
+                const pos = (N - 1) * p;
+                const base = Math.floor(pos);
+                const rest = pos - base;
+                if(sortedData[base + 1] !== undefined) {
+                    return sortedData[base] + rest * (sortedData[base + 1] - sortedData[base]);
+                } else {
+                    return sortedData[base];
+                }
+            };
+            stats.q1 = getPercentile(0.25);
+            stats.q2 = getPercentile(0.50); // Igual a mediana
+            stats.q3 = getPercentile(0.75);
+            stats.iqr = stats.q3 - stats.q1;
+
+            // --- M5. DISPERSIÓN ---
+            stats.range = sortedData[N - 1] - sortedData[0];
+            
+            // Varianza poblacional (divido por N, no N-1)
+            let sumSqDiff = 0;
+            let sumCubeDiff = 0;
+            let sumQuadDiff = 0;
+            let sumDiff = 0;
+
+            sortedData.forEach(v => {
+                const diff = v - stats.mean;
+                sumDiff += diff;
+                sumSqDiff += Math.pow(diff, 2);
+                sumCubeDiff += Math.pow(diff, 3);
+                sumQuadDiff += Math.pow(diff, 4);
+            });
+
+            stats.variance = sumSqDiff / N;
+            stats.stdDev = Math.sqrt(stats.variance);
+            stats.cv = (stats.mean === 0) ? 0 : (stats.stdDev / Math.abs(stats.mean)) * 100;
+
+            // --- M7. MOMENTOS ESTADÍSTICOS ---
+            stats.m1 = sumDiff / N; // Debería ser ~0
+            stats.m2 = stats.variance;
+            stats.m3 = sumCubeDiff / N;
+            stats.m4 = sumQuadDiff / N;
+
+            // Coeficientes (Poblacionales)
+            stats.skewness = (stats.stdDev === 0) ? 0 : stats.m3 / Math.pow(stats.stdDev, 3);
+            stats.kurtosis = (stats.stdDev === 0) ? 0 : stats.m4 / Math.pow(stats.stdDev, 4);
+
+            // --- M6. VALORES ATÍPICOS ---
+            stats.lowerLimit = stats.q1 - 1.5 * stats.iqr;
+            stats.upperLimit = stats.q3 + 1.5 * stats.iqr;
+            stats.outliers = sortedData.filter(v => v < stats.lowerLimit || v > stats.upperLimit);
+
+            // ACTUALIZAR UI DASHBOARD
+            document.getElementById('res-mean').innerText = stats.mean.toFixed(4);
+            document.getElementById('res-median').innerText = stats.median.toFixed(4);
+            document.getElementById('res-mode').innerText = stats.mode;
+            
+            document.getElementById('res-q1').innerText = stats.q1.toFixed(4);
+            document.getElementById('res-q2').innerText = stats.q2.toFixed(4);
+            document.getElementById('res-q3').innerText = stats.q3.toFixed(4);
+            document.getElementById('res-iqr').innerText = stats.iqr.toFixed(4);
+
+            document.getElementById('res-range').innerText = stats.range.toFixed(4);
+            document.getElementById('res-variance').innerText = stats.variance.toFixed(4);
+            document.getElementById('res-stddev').innerText = stats.stdDev.toFixed(4);
+            document.getElementById('res-cv').innerText = stats.cv.toFixed(2) + '%';
+
+            document.getElementById('res-m1').innerText = Math.abs(stats.m1) < 1e-10 ? "0" : stats.m1.toFixed(4);
+            document.getElementById('res-m2').innerText = stats.m2.toFixed(4);
+            document.getElementById('res-m3').innerText = stats.m3.toFixed(4);
+            document.getElementById('res-m4').innerText = stats.m4.toFixed(4);
+            
+            document.getElementById('res-skewness').innerText = stats.skewness.toFixed(4);
+            document.getElementById('res-kurtosis').innerText = stats.kurtosis.toFixed(4);
+
+            document.getElementById('res-li').innerText = stats.lowerLimit.toFixed(4);
+            document.getElementById('res-ls').innerText = stats.upperLimit.toFixed(4);
+            
+            const outliersDiv = document.getElementById('res-outliers');
+            if(stats.outliers.length > 0) {
+                outliersDiv.innerText = stats.outliers.join(', ');
+                outliersDiv.classList.add('text-red-600', 'font-bold');
+            } else {
+                outliersDiv.innerText = "Ninguno";
+                outliersDiv.classList.remove('text-red-600', 'font-bold');
+            }
+        }
+
+        function generateFrequencyTable(quantitative) {
+            const tbody = document.getElementById('freq-table-body');
+            tbody.innerHTML = '';
+            frequencyData = [];
+            const N = globalData.length;
+
+            if(!quantitative) {
+                // Cualitativos
+                document.getElementById('sturges-info').classList.add('hidden');
+                document.getElementById('table-description').innerText = "Distribución de Frecuencias (Variable Cualitativa)";
+                
+                const counts = {};
+                globalData.forEach(v => counts[v] = (counts[v] || 0) + 1);
+                
+                let cumulativeFi = 0;
+                let cumulativeHi = 0;
+
+                for(const [key, fi] of Object.entries(counts)) {
+                    const hi = fi / N;
+                    cumulativeFi += fi;
+                    cumulativeHi += hi;
+                    
+                    frequencyData.push({ label: key, fi: fi });
+
+                    tbody.innerHTML += `
+                        <tr class="hover:bg-blue-50 transition-colors">
+                            <td class="px-6 py-2 font-medium text-gray-900">${key}</td>
+                            <td class="px-6 py-2 text-center">${fi}</td>
+                            <td class="px-6 py-2 text-center bg-gray-50">${cumulativeFi}</td>
+                            <td class="px-6 py-2 text-center">${hi.toFixed(4)}</td>
+                            <td class="px-6 py-2 text-center bg-gray-50">${cumulativeHi.toFixed(4)}</td>
+                            <td class="px-6 py-2 text-center font-semibold text-blue-600">${(hi*100).toFixed(2)}%</td>
+                        </tr>
+                    `;
+                }
+            } else {
+                // Cuantitativos
+                const uniqueVals = new Set(globalData).size;
+                
+                // Criterio: Si hay más de 10 datos únicos, agrupamos por Regla de Sturges
+                if(uniqueVals > 10) {
+                    document.getElementById('table-description').innerText = "Distribución de Frecuencias para Datos Agrupados (Regla de Sturges)";
+                    
+                    const k = Math.round(1 + 3.322 * Math.log10(N));
+                    const range = stats.range;
+                    const A = range / k;
+
+                    document.getElementById('sturges-info').classList.remove('hidden');
+                    document.getElementById('sturges-k').innerText = k;
+                    document.getElementById('sturges-a').innerText = A.toFixed(4);
+
+                    let minVal = sortedData[0];
+                    let intervals = [];
+                    for(let i=0; i<k; i++) {
+                        let lower = minVal + (i*A);
+                        let upper = lower + A;
+                        intervals.push({lower, upper, mid: (lower+upper)/2, fi: 0});
+                    }
+
+                    // Conteo
+                    sortedData.forEach(v => {
+                        for(let i=0; i<k; i++) {
+                            // El último intervalo incluye el límite superior
+                            if(i === k-1) {
+                                if(v >= intervals[i].lower && v <= intervals[i].upper) {
+                                    intervals[i].fi++;
+                                    break;
+                                }
+                            } else {
+                                if(v >= intervals[i].lower && v < intervals[i].upper) {
+                                    intervals[i].fi++;
+                                    break;
+                                }
+                            }
+                        }
+                    });
+
+                    let cumulativeFi = 0;
+                    let cumulativeHi = 0;
+
+                    intervals.forEach(int => {
+                        const hi = int.fi / N;
+                        cumulativeFi += int.fi;
+                        cumulativeHi += hi;
+                        const label = `[${int.lower.toFixed(2)} - ${int.upper.toFixed(2)}${int === intervals[intervals.length-1]?']':')'}`;
+                        
+                        frequencyData.push({ label: label, mid: int.mid.toFixed(2), fi: int.fi });
+
+                        tbody.innerHTML += `
+                            <tr class="hover:bg-blue-50 transition-colors">
+                                <td class="px-6 py-2 font-medium text-gray-900">${label} <br><span class="text-xs text-gray-400">Marca: ${int.mid.toFixed(2)}</span></td>
+                                <td class="px-6 py-2 text-center">${int.fi}</td>
+                                <td class="px-6 py-2 text-center bg-gray-50">${cumulativeFi}</td>
+                                <td class="px-6 py-2 text-center">${hi.toFixed(4)}</td>
+                                <td class="px-6 py-2 text-center bg-gray-50">${cumulativeHi.toFixed(4)}</td>
+                                <td class="px-6 py-2 text-center font-semibold text-blue-600">${(hi*100).toFixed(2)}%</td>
+                            </tr>
+                        `;
+                    });
+
+                } else {
+                    // Datos no agrupados
+                    document.getElementById('sturges-info').classList.add('hidden');
+                    document.getElementById('table-description').innerText = "Distribución de Frecuencias para Datos No Agrupados";
+                    
+                    const counts = {};
+                    sortedData.forEach(v => counts[v] = (counts[v] || 0) + 1);
+                    
+                    let cumulativeFi = 0;
+                    let cumulativeHi = 0;
+
+                    for(const [key, fi] of Object.entries(counts)) {
+                        const hi = fi / N;
+                        cumulativeFi += fi;
+                        cumulativeHi += hi;
+                        
+                        frequencyData.push({ label: key, fi: fi });
+
+                        tbody.innerHTML += `
+                            <tr class="hover:bg-blue-50 transition-colors">
+                                <td class="px-6 py-2 font-medium text-gray-900">${key}</td>
+                                <td class="px-6 py-2 text-center">${fi}</td>
+                                <td class="px-6 py-2 text-center bg-gray-50">${cumulativeFi}</td>
+                                <td class="px-6 py-2 text-center">${hi.toFixed(4)}</td>
+                                <td class="px-6 py-2 text-center bg-gray-50">${cumulativeHi.toFixed(4)}</td>
+                                <td class="px-6 py-2 text-center font-semibold text-blue-600">${(hi*100).toFixed(2)}%</td>
+                            </tr>
+                        `;
+                    }
+                }
+            }
+
+            document.getElementById('sum-fi').innerText = N;
+        }
+
+        function renderCharts() {
+            const labels = frequencyData.map(d => d.label);
+            const dataFi = frequencyData.map(d => d.fi);
+            
+            const colors = [
+                'rgba(0, 74, 152, 0.7)', 'rgba(253, 185, 19, 0.7)', 'rgba(59, 130, 246, 0.7)',
+                'rgba(16, 185, 129, 0.7)', 'rgba(139, 92, 246, 0.7)', 'rgba(239, 68, 68, 0.7)',
+                'rgba(245, 158, 11, 0.7)', 'rgba(20, 184, 166, 0.7)', 'rgba(236, 72, 153, 0.7)'
+            ];
+
+            // 1. Gráfico de Barras / Histograma
+            const ctxBar = document.getElementById('barChart').getContext('2d');
+            if(chartInstances.bar) chartInstances.bar.destroy();
+            
+            // Si es continuo agrupado, dibujamos sin espacio (Histograma)
+            const isHistogram = isQuantitative && (new Set(globalData).size > 10);
+            
+            chartInstances.bar = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Frecuencia Absoluta (fi)',
+                        data: dataFi,
+                        backgroundColor: 'rgba(0, 74, 152, 0.7)',
+                        borderColor: 'rgba(0, 74, 152, 1)',
+                        borderWidth: 1,
+                        barPercentage: isHistogram ? 1.0 : 0.8,
+                        categoryPercentage: isHistogram ? 1.0 : 0.8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: { y: { beginAtZero: true } },
+                    plugins: { legend: { display: false } }
+                }
+            });
+
+            // 2. Gráfico Circular
+            const ctxPie = document.getElementById('pieChart').getContext('2d');
+            if(chartInstances.pie) chartInstances.pie.destroy();
+            chartInstances.pie = new Chart(ctxPie, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: dataFi,
+                        backgroundColor: colors.slice(0, labels.length)
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { boxWidth: 12, font: {size: 10} } }
+                    }
+                }
+            });
+
+            // 3. Diagrama de Caja (Solo si es cuantitativo)
+            const boxContainer = document.querySelector('.boxplot-container');
+            if (chartInstances.box) {
+                chartInstances.box.destroy();
+                chartInstances.box = null;
+            }
+            if (!isQuantitative) {
+                boxContainer.innerHTML = '<div class="text-gray-500 mt-10 text-center"><i class="fa-solid fa-circle-info text-2xl mb-3 block"></i>El diagrama de caja aplica únicamente a variables cuantitativas.</div>';
+            } else {
+                if (!document.getElementById('boxChart')) {
+                    boxContainer.innerHTML = '<canvas id="boxChart"></canvas>';
+                }
+                const ctxBox = document.getElementById('boxChart').getContext('2d');
+                chartInstances.box = new Chart(ctxBox, {
+                    type: 'boxplot',
+                    data: {
+                        labels: ['Distribución de datos'],
+                        datasets: [{
+                            label: 'Datos ingresados',
+                            backgroundColor: 'rgba(139, 92, 246, 0.35)',
+                            borderColor: 'rgba(99, 102, 241, 1)',
+                            borderWidth: 2,
+                            outlierBackgroundColor: '#ef4444',
+                            outlierRadius: 5,
+                            data: [globalData]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y'
+                    }
+                });
+            }
+        }
+
+        function generateInterpretations() {
+            const container = document.getElementById('interpretation-content');
+            container.innerHTML = ''; // Limpiar
+
+            if(!isQuantitative) {
+                container.innerHTML = `
+                    <p>Al tratar con una <b>variable cualitativa</b> (atributos o categorías), las medidas de tendencia central numéricas (como la media) y las medidas de dispersión no son aplicables.</p>
+                    <p>El análisis se centra en las frecuencias. Observando la tabla y los gráficos, podemos determinar qué categoría predomina en la población.</p>
+                `;
+                return;
+            }
+
+            let html = `<p>A continuación se presenta un análisis interpretativo automático del comportamiento de la población estadística (N = ${globalData.length}), basado en los resultados matemáticos calculados:</p>`;
+
+            // Tendencia Central
+            html += `<h4 class="font-bold text-lg text-utp-blue mt-4"><i class="fa-solid fa-bullseye mr-1"></i> 1. Comportamiento Central</h4>`;
+            html += `<p>El promedio poblacional (<b>Media</b>) es de <b>${stats.mean.toFixed(2)}</b>. El 50% de los datos se encuentra por debajo de <b>${stats.median.toFixed(2)}</b> (<b>Mediana</b>). `;
+            
+            if(stats.mean > stats.median) {
+                html += `Dado que la Media es mayor que la Mediana, la distribución presenta una cola hacia la derecha (valores altos empujan el promedio).`;
+            } else if (stats.mean < stats.median) {
+                html += `Dado que la Media es menor que la Mediana, la distribución presenta una cola hacia la izquierda.`;
+            } else {
+                html += `La Media y la Mediana son iguales, sugiriendo una distribución simétrica perfecta.`;
+            }
+            html += `</p>`;
+
+            // Dispersión
+            html += `<h4 class="font-bold text-lg text-utp-blue mt-4"><i class="fa-solid fa-arrows-left-right mr-1"></i> 2. Variabilidad y Dispersión</h4>`;
+            html += `<p>La variabilidad promedio de los datos respecto a la media (<b>Desviación Estándar poblacional</b>) es de <b>${stats.stdDev.toFixed(2)}</b>. `;
+            
+            html += `El <b>Coeficiente de Variación (CV)</b> es de <b>${stats.cv.toFixed(2)}%</b>. `;
+            if(stats.cv <= 15) html += `<span class="text-green-700 font-semibold">Esto indica que los datos son altamente homogéneos (baja dispersión)</span>, por lo que la media es un representante altamente confiable de la población.`;
+            else if(stats.cv <= 30) html += `<span class="text-yellow-600 font-semibold">Esto indica una dispersión moderada</span>, los datos presentan variabilidad aceptable.`;
+            else html += `<span class="text-red-600 font-semibold">Esto refleja una alta dispersión y heterogeneidad en la población</span>. La media no es muy representativa debido a la alta variabilidad.`;
+            html += `</p>`;
+
+            // Forma (Momentos)
+            html += `<h4 class="font-bold text-lg text-utp-blue mt-4"><i class="fa-solid fa-shapes mr-1"></i> 3. Forma de la Distribución (Basado en Momentos)</h4>`;
+            html += `<p>El <b>Coeficiente de Asimetría (Pearson)</b> es <b>${stats.skewness.toFixed(2)}</b>. `;
+            if(Math.abs(stats.skewness) < 0.2) html += `Al ser cercano a cero, indica que la distribución es prácticamente <b>Simétrica</b>.`;
+            else if(stats.skewness > 0) html += `Al ser positivo, la distribución es <b>Asimétrica Positiva (Sesgada a la derecha)</b>. La mayor concentración de datos está en los valores bajos.`;
+            else html += `Al ser negativo, la distribución es <b>Asimétrica Negativa (Sesgada a la izquierda)</b>. La mayor concentración de datos está en los valores altos.`;
+            html += `</p>`;
+
+            html += `<p class="mt-2">El <b>Coeficiente de Curtosis</b> calculado es <b>${stats.kurtosis.toFixed(2)}</b> (Momento 4 / Desviación Estándar a la 4). `;
+            // Usamos Fisher relacional (kurtosis - 3) para interpretar
+            const fisher = stats.kurtosis - 3;
+            if(Math.abs(fisher) < 0.3) html += `Este valor indica una distribución <b>Mesocúrtica</b> (comportamiento normal en el pico).`;
+            else if(fisher > 0) html += `Al restar 3, obtenemos un valor positivo, indicando una distribución <b>Leptocúrtica</b> (muy apuntada, gran concentración alrededor de la media y colas pesadas).`;
+            else html += `Al restar 3, obtenemos un valor negativo, indicando una distribución <b>Platicúrtica</b> (aplanada, los datos están muy dispersos y no hay un pico marcado).`;
+            html += `</p>`;
+
+            // Atípicos
+            html += `<h4 class="font-bold text-lg text-utp-blue mt-4"><i class="fa-solid fa-triangle-exclamation mr-1"></i> 4. Valores Atípicos</h4>`;
+            if(stats.outliers.length === 0) {
+                html += `<p>Tras aplicar el criterio del Rango Intercuartílico, <b>no se encontraron valores atípicos</b> poblacionales. Todos los datos están dentro de los límites normales [${stats.lowerLimit.toFixed(2)} , ${stats.upperLimit.toFixed(2)}].</p>`;
+            } else {
+                html += `<p>Se han identificado <b>${stats.outliers.length} valores atípicos</b> que se escapan del límite normal superior (${stats.upperLimit.toFixed(2)}) o inferior (${stats.lowerLimit.toFixed(2)}). Estos valores pueden distorsionar fuertemente medidas como la media y la varianza.</p>`;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function resetDashboard() {
+            // Reiniciar UI cuando es cualitativa
+            const emptyStr = "-";
+            const elements = ['res-mean', 'res-median', 'res-mode', 'res-q1', 'res-q2', 'res-q3', 'res-iqr', 'res-range', 'res-variance', 'res-stddev', 'res-cv', 'res-m1', 'res-m2', 'res-m3', 'res-m4', 'res-skewness', 'res-kurtosis', 'res-li', 'res-ls', 'res-outliers'];
+            elements.forEach(id => {
+                if(document.getElementById(id)) document.getElementById(id).innerText = emptyStr;
+            });
+        }
+    </script>
+    </div><!-- /app-shell -->
+    <div id="toast-message" class="hidden" role="status" aria-live="polite"><i class="fa-solid fa-circle-info"></i><span id="toast-text"></span></div>
+</body>
+</html>
